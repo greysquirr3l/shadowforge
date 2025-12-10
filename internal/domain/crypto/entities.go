@@ -91,11 +91,14 @@ func (p *CryptoPayload) Validate() error {
 }
 
 // KeyPair represents a post-quantum cryptographic key pair.
+// KeyPair represents a post-quantum cryptographic key pair.
 type KeyPair struct {
+	ID         string
 	Algorithm  PQCAlgorithm
 	PublicKey  []byte
 	PrivateKey []byte
 	CreatedAt  time.Time
+	ExpiresAt  *time.Time
 }
 
 // NewKeyPair creates a new KeyPair with validation.
@@ -109,6 +112,7 @@ func NewKeyPair(algorithm PQCAlgorithm, publicKey, privateKey []byte) (*KeyPair,
 	}
 
 	return &KeyPair{
+		ID:         GenerateKeyPairID(),
 		Algorithm:  algorithm,
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,

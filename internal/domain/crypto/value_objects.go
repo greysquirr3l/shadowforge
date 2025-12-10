@@ -24,6 +24,11 @@ func GeneratePayloadID() PayloadID {
 	return PayloadID{value: uuid.New().String()}
 }
 
+// GenerateKeyPairID creates a new random ID for a KeyPair using UUID v4.
+func GenerateKeyPairID() string {
+	return uuid.New().String()
+}
+
 // String returns the string representation of the PayloadID.
 func (p PayloadID) String() string {
 	return p.value

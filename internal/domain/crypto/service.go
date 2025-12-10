@@ -25,3 +25,19 @@ type CryptoService interface {
 	// DeriveKey derives a cryptographic key from a password using Argon2id.
 	DeriveKey(ctx context.Context, password string, salt []byte) ([]byte, error)
 }
+
+// Repository defines the interface for persisting and retrieving cryptographic keys.
+// This follows the Repository pattern from Domain-Driven Design.
+type Repository interface {
+	// SaveKeyPair persists a key pair to storage.
+	SaveKeyPair(ctx context.Context, keyPair *KeyPair) error
+
+	// GetKeyPair retrieves a key pair by its ID.
+	GetKeyPair(ctx context.Context, keyID string) (*KeyPair, error)
+
+	// ListKeyPairs retrieves all key pairs, optionally filtered by algorithm.
+	ListKeyPairs(ctx context.Context, algorithm *PQCAlgorithm, limit, offset int) ([]*KeyPair, int, error)
+
+	// DeleteKeyPair removes a key pair from storage.
+	DeleteKeyPair(ctx context.Context, keyID string) error
+}
