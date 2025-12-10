@@ -1,0 +1,12 @@
+.github/instructions/
+.github/copilot-instructions.md
+.github/copilot-instructions.md.bak
+.vscode/
+docs/dev
+docs/architecture.md
+docs/implementation_plan_todo.md
+docs/VERSION_INTEGRATION.md
+.mcp.json
+INITIAL_PROMPT.md
+.env
+.env.(local|development|production|test)

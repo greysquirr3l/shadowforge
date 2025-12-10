@@ -1,0 +1,30 @@
+// Markdown linting configuration for Shadowforge
+{
+    "config": {
+        // Line length - allow longer lines for code and tables
+        "MD013": {
+            "line_length": 120,
+            "code_blocks": false,
+            "tables": false
+        },
+        // Multiple headings with the same content - allow for documentation
+        "MD024": false,
+        // Fenced code blocks should have a language - require language
+        "MD040": true,
+        // First line in file should be a top-level heading - not required
+        "MD041": false,
+        // Emphasis used instead of a heading - allow for emphasis blocks
+        "MD036": false,
+        // Table column style - be lenient
+        "MD060": false
+    },
+    "globs": [
+        ".github/**/*.md"
+    ],
+    "ignores": [
+        "**/node_modules/**",
+        "**/vendor/**",
+        "**/.git/**",
+        "docs/**"
+    ]
+}
