@@ -8,6 +8,7 @@ require (
 	github.com/klauspost/reedsolomon v1.12.6
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/image v0.34.0
 )
 
 require (

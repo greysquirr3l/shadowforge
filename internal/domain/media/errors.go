@@ -45,4 +45,7 @@ var (
 
 	// ErrAssetNotFound indicates the media asset was not found.
 	ErrAssetNotFound = errors.New("asset not found")
+
+	// ErrCapacityNotFound indicates capacity information was not found for the asset.
+	ErrCapacityNotFound = errors.New("capacity information not found")
 )
