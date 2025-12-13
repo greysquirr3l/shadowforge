@@ -6,6 +6,7 @@ package stego
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
@@ -116,14 +117,23 @@ func (t *LSBAudioTechnique) Embed(ctx context.Context, carrier, payload []byte) 
 		return nil, err
 	}
 
-	// Check capacity
+	// Check capacity (need 4 extra bytes for length header)
 	capacity := t.calculateSampleCapacity(samples, channels)
-	if capacity < len(payload) {
+	if capacity < len(payload)+4 {
 		return nil, stego.ErrInsufficientCapacity
 	}
 
-	// Convert payload to bits
-	payloadBits := t.payloadToBits(payload)
+	// Prepend 4-byte length header to payload
+	payloadWithHeader := make([]byte, 4+len(payload))
+	// Store length as big-endian uint32
+	payloadWithHeader[0] = byte(len(payload) >> 24)
+	payloadWithHeader[1] = byte(len(payload) >> 16)
+	payloadWithHeader[2] = byte(len(payload) >> 8)
+	payloadWithHeader[3] = byte(len(payload))
+	copy(payloadWithHeader[4:], payload)
+
+	// Convert payload (with header) to bits
+	payloadBits := t.payloadToBits(payloadWithHeader)
 
 	// Embed payload bits into samples
 	modifiedSamples, err := t.embedBitsInSamples(samples, payloadBits, channels)
@@ -170,8 +180,23 @@ func (t *LSBAudioTechnique) Extract(ctx context.Context, carrier []byte) ([]byte
 		return nil, stego.ErrNoEmbeddedData
 	}
 
-	// Convert bits back to payload
-	payload := t.bitsToPayload(extractedBits)
+	// Need at least 32 bits (4 bytes) for length header
+	if len(extractedBits) < 32 {
+		return nil, stego.ErrNoEmbeddedData
+	}
+
+	// Read first 4 bytes to get payload length
+	lengthBytes := t.bitsToPayload(extractedBits[:32])
+	payloadLength := uint32(lengthBytes[0])<<24 | uint32(lengthBytes[1])<<16 | uint32(lengthBytes[2])<<8 | uint32(lengthBytes[3])
+
+	// Validate length
+	if payloadLength == 0 || payloadLength > uint32(len(extractedBits)/8-4) {
+		return nil, fmt.Errorf("invalid payload length: %d", payloadLength)
+	}
+
+	// Extract only the actual payload (skip 32-bit header)
+	payloadBits := extractedBits[32 : 32+payloadLength*8]
+	payload := t.bitsToPayload(payloadBits)
 
 	t.logger.Info("LSB audio extraction completed",
 		slog.Int("extracted_bits", len(extractedBits)),

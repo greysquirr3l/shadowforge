@@ -310,56 +310,21 @@ func (p *PaletteTechnique) copyPalettedImage(src *image.Paletted) *image.Palette
 
 // embedByReordering embeds data by reordering palette entries.
 func (p *PaletteTechnique) embedByReordering(img *image.Paletted, payload []byte) error {
-	paletteSize := len(img.Palette)
-	if paletteSize <= 1 {
-		return stego.ErrInsufficientCapacity
-	}
-
-	// Convert payload to bits
-	bits := p.payloadToBits(payload)
-
-	// Create a deterministic mapping based on payload bits
-	// This is a simplified approach - in production, use more sophisticated methods
-	mapping := make(map[int]int)
-
-	// Use first few bits to determine permutation
-	bitsNeeded := min(len(bits), paletteSize)
-	for i := 0; i < bitsNeeded && i < len(bits); i++ {
-		if bits[i] == 1 {
-			// Swap adjacent palette entries
-			if i+1 < paletteSize {
-				mapping[i] = i + 1
-				mapping[i+1] = i
-			}
-		}
-	}
-
-	// Apply the mapping by reordering palette
-	originalPalette := make(color.Palette, len(img.Palette))
-	copy(originalPalette, img.Palette)
-
-	for i := range img.Palette {
-		if newIdx, exists := mapping[i]; exists && newIdx < len(originalPalette) {
-			img.Palette[i] = originalPalette[newIdx]
-		}
-	}
-
-	return nil
+	// For now, use modification-based embedding as the reordering method
+	// is not yet fully implemented. This provides consistent embed/extract behavior.
+	//
+	// TODO: Implement proper palette reordering algorithm
+	return p.embedByModification(img, payload)
 }
 
 // extractFromReordering extracts data from palette reordering.
 func (p *PaletteTechnique) extractFromReordering(img *image.Paletted) ([]byte, error) {
-	// This is a simplified extraction that assumes a known original palette order
-	// In practice, you'd need a more sophisticated approach to detect reordering patterns
-
-	paletteSize := len(img.Palette)
-	if paletteSize <= 1 {
-		return nil, stego.ErrNoEmbeddedData
-	}
-
-	// For this simplified version, return a minimal payload
-	// indicating successful extraction
-	return []byte{0x01}, nil
+	// For now, use the modification-based extraction as the reordering method
+	// is not yet fully implemented. This allows basic functionality while
+	// maintaining the same extraction logic as embedding.
+	//
+	// TODO: Implement proper palette reordering detection and extraction
+	return p.extractFromModification(img)
 }
 
 // embedByModification embeds data by modifying palette color values.
