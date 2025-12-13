@@ -285,12 +285,22 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("input file does not exist: %s", inputFile)
 	}
 
+	// Convert technique string to domain type if specified
+	var technique stego.StegoTechnique
+	if techniqueStr != "" {
+		var err error
+		technique, err = stringToTechnique(techniqueStr)
+		if err != nil {
+			return fmt.Errorf("invalid technique: %w", err)
+		}
+	}
+
 	// Create extract command
 	extractCmd := commands.ExtractCommand{
 		InputFile:  inputFile,
 		OutputFile: outputFile,
 		Password:   password,
-		Technique:  stego.StegoTechnique(techniqueStr),
+		Technique:  technique,
 	}
 
 	// Validate command

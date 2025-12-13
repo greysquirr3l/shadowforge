@@ -335,7 +335,7 @@ func (s *StegoService) techniqueToInfraTechnique(technique stego.StegoTechnique)
 	case stego.EchoHiding:
 		return "echo"
 	case stego.ZeroWidth:
-		return "zerowidth"
+		return "zero-width"  // Text processor expects hyphenated version
 	case stego.Palette:
 		return "palette"
 	default:
