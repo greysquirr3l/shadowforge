@@ -72,10 +72,24 @@ func (s *StegoService) Embed(ctx context.Context, coverMedia, payload []byte, te
 		return nil, fmt.Errorf("failed to create container: %w", err)
 	}
 
-	// Mark as embedded with the data
-	if err := container.Embed(stegoData, nil); err != nil {
+	// Calculate and set capacity
+	capacity, err := s.CalculateCapacity(ctx, coverMedia, technique)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate capacity: %w", err)
+	}
+	if err := container.SetCapacity(capacity); err != nil {
+		return nil, fmt.Errorf("failed to set capacity: %w", err)
+	}
+
+	// Mark as embedded with the ORIGINAL payload data
+	// (stegoData is the complete output image, not what we store in EmbeddedData)
+	if err := container.Embed(payload, nil); err != nil {
 		return nil, fmt.Errorf("failed to mark as embedded: %w", err)
 	}
+
+	// Store the actual stego output in the container
+	// (The domain model tracks the payload, but we return the full stego media)
+	container.CoverMedia = stegoData
 
 	s.logger.WithFields(logrus.Fields{
 		"stego_size": len(stegoData),
@@ -289,7 +303,9 @@ func (s *StegoService) calculateDCTCapacity(cover []byte) (int64, error) {
 
 func (s *StegoService) calculateAudioCapacity(cover []byte, technique stego.StegoTechnique) (int64, error) {
 	processor := infraMedia.NewAudioProcessor()
-	capacityInfo, err := processor.CalculateCapacity(cover, string(technique))
+	// Convert domain technique to infrastructure technique name
+	infraTechnique := s.techniqueToInfraTechnique(technique)
+	capacityInfo, err := processor.CalculateCapacity(cover, infraTechnique)
 	if err != nil {
 		return 0, err
 	}
@@ -298,9 +314,31 @@ func (s *StegoService) calculateAudioCapacity(cover []byte, technique stego.Steg
 
 func (s *StegoService) calculateTextCapacity(cover []byte, technique stego.StegoTechnique) (int64, error) {
 	processor := infraMedia.NewTextProcessor()
-	capacityInfo, err := processor.CalculateCapacity(cover, string(technique))
+	// Convert domain technique to infrastructure technique name
+	infraTechnique := s.techniqueToInfraTechnique(technique)
+	capacityInfo, err := processor.CalculateCapacity(cover, infraTechnique)
 	if err != nil {
 		return 0, err
 	}
 	return capacityInfo.TotalCapacity, nil
+}
+
+// techniqueToInfraTechnique converts domain technique to infrastructure technique string.
+func (s *StegoService) techniqueToInfraTechnique(technique stego.StegoTechnique) string {
+	switch technique {
+	case stego.LSB:
+		return "lsb"
+	case stego.DCT:
+		return "dct"
+	case stego.PhaseEncoding:
+		return "phase"
+	case stego.EchoHiding:
+		return "echo"
+	case stego.ZeroWidth:
+		return "zerowidth"
+	case stego.Palette:
+		return "palette"
+	default:
+		return string(technique) // Fallback to string conversion
+	}
 }

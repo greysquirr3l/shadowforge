@@ -26,20 +26,23 @@ type CLIHandlers struct {
 }
 
 // NewCLIHandlers creates CLI command handlers with service dependencies.
-// TODO: Wire in actual service implementations when available
-func NewCLIHandlers(logger *logrus.Logger) *CLIHandlers {
+// Accepts pre-initialized handlers from the service container.
+func NewCLIHandlers(
+	embedHandler *commands.EmbedHandler,
+	extractHandler *commands.ExtractHandler,
+	analyzeCapacityHandler *commands.AnalyzeCapacityHandler,
+	logger *logrus.Logger,
+) *CLIHandlers {
 	return &CLIHandlers{
-		logger: logger,
-		// TODO: Inject actual service implementations
-		// embedHandler: commands.NewEmbedHandler(stegoSvc, cryptoSvc, ecSvc, mediaSvc, logger),
-		// extractHandler: commands.NewExtractHandler(stegoSvc, cryptoSvc, ecSvc, mediaSvc, logger),
-		// analyzeCapacityHandler: commands.NewAnalyzeCapacityHandler(stegoSvc, mediaSvc, logger),
+		embedHandler:           embedHandler,
+		extractHandler:         extractHandler,
+		analyzeCapacityHandler: analyzeCapacityHandler,
+		logger:                 logger,
 	}
 }
 
 // NewEmbedCommands creates all embed-related commands
-func NewEmbedCommands(logger *logrus.Logger) ([]*cobra.Command, error) {
-	handlers := NewCLIHandlers(logger)
+func NewEmbedCommands(handlers *CLIHandlers, logger *logrus.Logger) ([]*cobra.Command, error) {
 
 	embedCmd := &cobra.Command{
 		Use:   "embed",
@@ -141,15 +144,7 @@ func (h *CLIHandlers) handleEmbedCommand(cmd *cobra.Command, args []string, logg
 		Quality:    quality,
 	}
 
-	start := time.Now()
-
-	// TODO: Replace with actual handler when services are available
-	if h.embedHandler == nil {
-		// Simulate successful operation for now
-		return h.simulateEmbedOperation(embedCmd, jsonOutput, start, logger)
-	}
-
-	// Execute embed command
+	// Use real handler instead of simulation
 	ctx := context.Background()
 	result, err := h.embedHandler.Handle(ctx, embedCmd)
 	if err != nil {
@@ -268,6 +263,7 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 	inputFile, _ := cmd.Flags().GetString("input")
 	outputFile, _ := cmd.Flags().GetString("output")
 	password, _ := cmd.Flags().GetString("password")
+	techniqueStr, _ := cmd.Flags().GetString("technique")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 	verbose, _ := cmd.Flags().GetBool("verbose")
 
@@ -290,10 +286,11 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 	}
 
 	// Create extract command
-	extractCmd := &commands.ExtractCommand{
+	extractCmd := commands.ExtractCommand{
 		InputFile:  inputFile,
 		OutputFile: outputFile,
 		Password:   password,
+		Technique:  stego.StegoTechnique(techniqueStr),
 	}
 
 	// Validate command
@@ -304,43 +301,14 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 	logger.Info("Validated extract command",
 		"input_file", inputFile,
 		"output_file", outputFile,
-		"password_set", password != "")
+		"password_set", password != "",
+		"technique", techniqueStr)
 
-	// SIMULATION: For now, simulate the extract operation
-	// TODO: Replace with actual ExtractHandler when services are integrated
-	detectedTechnique := detectTechniqueFromFile(inputFile)
-	result := &commands.ExtractResult{
-		OutputFile:        outputFile,
-		Technique:         detectedTechnique,
-		PayloadSize:       1024 + int64(len(inputFile)*10), // Simulate variable payload size
-		InputSize:         2048 + int64(len(inputFile)*12),
-		ProcessingTime:    150 + int64(len(inputFile)), // Simulate processing time in ms
-		IntegrityPassed:   true,
-		DecryptionUsed:    password != "",
-		DecompressionUsed: true,
-	}
-
-	// Simulate file processing time with visual feedback
-	if !jsonOutput {
-		fmt.Printf("🔍 Analyzing stego media: %s\n", inputFile)
-		fmt.Printf("🔧 Detected technique: %s\n", result.Technique)
-		if result.DecryptionUsed {
-			fmt.Printf("🔑 Decrypting payload...\n")
-		}
-		fmt.Printf("📤 Extracting data...\n")
-		fmt.Printf("💾 Writing to: %s\n", outputFile)
-		fmt.Printf("✨ Processing...")
-		for i := 0; i < 3; i++ {
-			time.Sleep(100 * time.Millisecond)
-			fmt.Print(".")
-		}
-		fmt.Println()
-	}
-
-	// Simulate writing output file
-	simulatedContent := fmt.Sprintf("Extracted content from %s using %s technique", inputFile, result.Technique)
-	if err := os.WriteFile(outputFile, []byte(simulatedContent), 0644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
+	// Use real handler instead of simulation
+	ctx := context.Background()
+	result, err := h.extractHandler.Handle(ctx, extractCmd)
+	if err != nil {
+		return fmt.Errorf("extract operation failed: %w", err)
 	}
 
 	// Output results
@@ -415,7 +383,7 @@ func (h *CLIHandlers) handleAnalyzeCapacityCommand(cmd *cobra.Command, args []st
 	// If analyzeAll is true, we'll run analysis for all supported techniques for the file type
 
 	// Create analyze capacity command
-	analyzeCmd := &commands.AnalyzeCapacityCommand{
+	analyzeCmd := commands.AnalyzeCapacityCommand{
 		CoverFile: inputFile,
 		Technique: analyzeTechnique, // Empty if analyzeAll
 	}
@@ -425,29 +393,12 @@ func (h *CLIHandlers) handleAnalyzeCapacityCommand(cmd *cobra.Command, args []st
 		return fmt.Errorf("command validation failed: %w", err)
 	}
 
-	// SIMULATION: For now, simulate the capacity analysis
-	// If analyzeAll, we'd analyze all applicable techniques for the file type
-	techniquesToAnalyze := []stego.StegoTechnique{}
-	if analyzeAll {
-		// Determine all applicable techniques for this file type
-		switch fileExt {
-		case ".png", ".bmp":
-			techniquesToAnalyze = []stego.StegoTechnique{stego.LSB}
-		case ".jpg", ".jpeg":
-			techniquesToAnalyze = []stego.StegoTechnique{stego.DCT}
-		case ".wav":
-			techniquesToAnalyze = []stego.StegoTechnique{stego.PhaseEncoding, stego.EchoHiding}
-		case ".txt", ".md":
-			techniquesToAnalyze = []stego.StegoTechnique{stego.ZeroWidth}
-		case ".gif":
-			techniquesToAnalyze = []stego.StegoTechnique{stego.Palette}
-		}
-	} else {
-		techniquesToAnalyze = []stego.StegoTechnique{analyzeTechnique}
+	// Use real handler instead of simulation
+	ctx := context.Background()
+	result, err := h.analyzeCapacityHandler.Handle(ctx, analyzeCmd)
+	if err != nil {
+		return fmt.Errorf("capacity analysis failed: %w", err)
 	}
-
-	// SIMULATION: Use simulation helper
-	result := simulateCapacityAnalysis(inputFile, fileSize, techniquesToAnalyze)
 
 	logger.WithFields(logrus.Fields{
 		"techniques_analyzed": len(result.TechniqueResults),
@@ -463,7 +414,7 @@ func (h *CLIHandlers) handleAnalyzeCapacityCommand(cmd *cobra.Command, args []st
 }
 
 // NewExtractCommands creates all extract-related commands
-func NewExtractCommands(logger *logrus.Logger) ([]*cobra.Command, error) {
+func NewExtractCommands(handlers *CLIHandlers, logger *logrus.Logger) ([]*cobra.Command, error) {
 	extractCmd := &cobra.Command{
 		Use:   "extract",
 		Short: "Extract data from steganographic media",
@@ -478,16 +429,23 @@ Automatically detects and uses the correct extraction method for:
   • Zero-width encoded text data
   • Palette-encoded data in GIF/PNG images`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			h := &CLIHandlers{logger: logger}
-			return h.handleExtractCommand(cmd, args)
+			return handlers.handleExtractCommand(cmd, args)
 		},
 	}
+
+	// Add flags
+	extractCmd.Flags().StringP("input", "i", "", "Input stego media file (required)")
+	extractCmd.Flags().StringP("output", "o", "", "Output file for extracted data (required)")
+	extractCmd.Flags().StringP("password", "p", "", "Decryption password (if encrypted)")
+	extractCmd.Flags().StringP("technique", "t", "", "Steganography technique (auto-detect if not specified)")
+	extractCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
+	extractCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 
 	return []*cobra.Command{extractCmd}, nil
 }
 
 // NewAnalyzeCommands creates all analyze-related commands
-func NewAnalyzeCommands(logger *logrus.Logger) ([]*cobra.Command, error) {
+func NewAnalyzeCommands(handlers *CLIHandlers, logger *logrus.Logger) ([]*cobra.Command, error) {
 	analyzeCmd := &cobra.Command{
 		Use:   "analyze",
 		Short: "Analyze media for steganographic properties",

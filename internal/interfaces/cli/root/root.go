@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/greysquirr3l/shadowforge/internal/interfaces/cli/commands"
+	"github.com/greysquirr3l/shadowforge/internal/interfaces/cli/services"
 	"github.com/greysquirr3l/shadowforge/pkg/version"
 )
 
@@ -43,18 +44,32 @@ Available aliases: shadowforge, sforge`, appDesc, appName),
 	rootCmd.PersistentFlags().Bool("debug", false, "Enable debug logging")
 	rootCmd.PersistentFlags().String("config", "", "Config file path (default: $HOME/.shadowforge.yaml)")
 
-	// Create command groups
-	embedCommands, err := commands.NewEmbedCommands(logger)
+	// Initialize service container with all dependencies
+	container, err := services.NewServiceContainer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize service container: %w", err)
+	}
+
+	// Create CLI handlers with injected services
+	handlers := commands.NewCLIHandlers(
+		container.EmbedHandler,
+		container.ExtractHandler,
+		container.AnalyzeCapacityHandler,
+		logger,
+	)
+
+	// Create command groups with handlers
+	embedCommands, err := commands.NewEmbedCommands(handlers, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create embed commands: %w", err)
 	}
 
-	extractCommands, err := commands.NewExtractCommands(logger)
+	extractCommands, err := commands.NewExtractCommands(handlers, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create extract commands: %w", err)
 	}
 
-	analyzeCommands, err := commands.NewAnalyzeCommands(logger)
+	analyzeCommands, err := commands.NewAnalyzeCommands(handlers, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create analyze commands: %w", err)
 	}
