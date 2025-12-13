@@ -110,7 +110,12 @@ func (s *StegoService) Extract(ctx context.Context, stegoMedia []byte, technique
 
 	switch technique {
 	case stego.LSB:
-		payload, err = s.extractLSB(stegoMedia)
+		// Detect format to route to correct LSB implementation
+		format, err := s.mediaService.DetectFormat(ctx, stegoMedia)
+		if err != nil {
+			return nil, fmt.Errorf("format detection failed: %w", err)
+		}
+		payload, err = s.extractLSB(stegoMedia, format)
 	case stego.DCT:
 		payload, err = s.extractDCT(stegoMedia)
 	case stego.PhaseEncoding:
@@ -147,7 +152,7 @@ func (s *StegoService) CalculateCapacity(ctx context.Context, coverMedia []byte,
 	// Calculate capacity based on technique and format
 	var capacity int64
 	switch format {
-	case media.FormatPNG, media.FormatBMP:
+	case media.FormatPNG, media.FormatBMP, media.FormatGIF:
 		capacity, err = s.calculateImageCapacity(coverMedia, technique)
 	case media.FormatJPEG:
 		if technique == stego.DCT {
@@ -224,11 +229,27 @@ func (s *StegoService) OptimizeTechnique(ctx context.Context, coverMedia []byte,
 // Helper methods for each technique
 
 func (s *StegoService) embedLSB(cover, payload []byte, format media.MediaFormat) ([]byte, error) {
+	// Route to appropriate LSB implementation based on format
+	if format == media.FormatWAV {
+		// Use audio LSB for WAV files
+		// Note: LSBAudioTechnique uses slog.Logger, pass nil to use default
+		technique := infraStego.NewLSBAudioWithDefaults(nil)
+		return technique.Embed(context.Background(), cover, payload)
+	}
+	// Use image LSB for PNG/BMP/GIF files
 	technique := infraStego.NewLSBTechnique()
 	return technique.Embed(context.Background(), cover, payload)
 }
 
-func (s *StegoService) extractLSB(stego []byte) ([]byte, error) {
+func (s *StegoService) extractLSB(stego []byte, format media.MediaFormat) ([]byte, error) {
+	// Route to appropriate LSB implementation based on format
+	if format == media.FormatWAV {
+		// Use audio LSB for WAV files
+		// Note: LSBAudioTechnique uses slog.Logger, pass nil to use default
+		technique := infraStego.NewLSBAudioWithDefaults(nil)
+		return technique.Extract(context.Background(), stego)
+	}
+	// Use image LSB for PNG/BMP/GIF files
 	technique := infraStego.NewLSBTechnique()
 	return technique.Extract(context.Background(), stego)
 }
@@ -335,7 +356,7 @@ func (s *StegoService) techniqueToInfraTechnique(technique stego.StegoTechnique)
 	case stego.EchoHiding:
 		return "echo"
 	case stego.ZeroWidth:
-		return "zero-width"  // Text processor expects hyphenated version
+		return "zero-width" // Text processor expects hyphenated version
 	case stego.Palette:
 		return "palette"
 	default:
