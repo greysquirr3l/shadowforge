@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 )
 
@@ -17,11 +19,11 @@ type MediaService struct {
 	imageProcessor *ImageProcessor
 	audioProcessor *AudioProcessor
 	textProcessor  *TextProcessor
-	logger         *slog.Logger
+	logger         *logrus.Logger
 }
 
 // NewMediaService creates a new MediaService.
-func NewMediaService(logger *slog.Logger) *MediaService {
+func NewMediaService(logger *logrus.Logger) *MediaService {
 	detector := NewFormatDetector()
 
 	return &MediaService{

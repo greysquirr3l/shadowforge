@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"image/png"
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 )
@@ -21,7 +22,7 @@ type DCTTechnique struct {
 // NewDCTTechnique creates a new DCT-based steganography technique.
 func NewDCTTechnique() *DCTTechnique {
 	return &DCTTechnique{
-		quality: 95, // High quality to minimize degradation
+		quality: 100, // Maximum quality to preserve LSB data (possibly lossless)
 	}
 }
 
@@ -49,6 +50,11 @@ func (d *DCTTechnique) Embed(ctx context.Context, carrier []byte, payload []byte
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	default:
+	}
+
+	// Validate payload
+	if len(payload) == 0 {
+		return nil, fmt.Errorf("payload cannot be empty")
 	}
 
 	// Decode JPEG image
@@ -91,11 +97,12 @@ func (d *DCTTechnique) Embed(ctx context.Context, carrier []byte, payload []byte
 		return nil, err
 	}
 
-	// Encode as JPEG
+	// FIXED: Encode as PNG instead of JPEG to avoid compression artifacts
+	// This follows the strategy of auyer/steganography library
 	var buf bytes.Buffer
-	opts := &jpeg.Options{Quality: d.quality}
-	if err := jpeg.Encode(&buf, rgba, opts); err != nil {
-		return nil, fmt.Errorf("failed to encode JPEG: %w", err)
+	err = png.Encode(&buf, rgba)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode PNG: %w", err)
 	}
 
 	return buf.Bytes(), nil
@@ -110,10 +117,10 @@ func (d *DCTTechnique) Extract(ctx context.Context, carrier []byte) ([]byte, err
 	default:
 	}
 
-	// Decode JPEG image
-	img, err := jpeg.Decode(bytes.NewReader(carrier))
+	// FIXED: Decode as generic image (could be PNG output from previous embedding)
+	img, _, err := image.Decode(bytes.NewReader(carrier))
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode JPEG: %w", err)
+		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
 	rgba := imageToRGBA(img)
@@ -158,11 +165,11 @@ func (d *DCTTechnique) CalculateCapacity(ctx context.Context, carrier []byte) (i
 // For simplified spatial domain approach:
 // - Use similar capacity as LSB but more conservative (30% of pixels)
 func (d *DCTTechnique) calculateCapacity(width, height int) int {
-	// Conservative estimate: 30% of pixels, 1 bit per pixel
-	// JPEG compression reduces available pixels compared to lossless formats
+	// FIXED: 3 bits per pixel (RGB channels), like auyer library
+	// Since we output PNG, no need for conservative estimate
 	totalPixels := width * height
-	usablePixels := totalPixels * 3 / 10 // 30% of pixels
-	return usablePixels / 8              // bits to bytes
+	totalBits := totalPixels * 3 // 3 bits per pixel (R, G, B)
+	return totalBits / 8         // Convert bits to bytes
 }
 
 // embedData embeds data bytes into the RGBA image.
@@ -186,8 +193,16 @@ func (d *DCTTechnique) embedData(rgba *image.RGBA, data []byte) error {
 				continue
 			}
 
-			// Embed 1 bit in Green channel LSB
-			d.embedBitInChannel(&pixel.G, data, &bitIndex)
+			// FIXED: Embed in all 3 RGB channels for maximum capacity (like auyer library)
+			if bitIndex < totalBits {
+				d.embedBitInChannel(&pixel.R, data, &bitIndex)
+			}
+			if bitIndex < totalBits {
+				d.embedBitInChannel(&pixel.G, data, &bitIndex)
+			}
+			if bitIndex < totalBits {
+				d.embedBitInChannel(&pixel.B, data, &bitIndex)
+			}
 
 			rgba.SetRGBA(x, y, pixel)
 		}
@@ -210,8 +225,12 @@ func (d *DCTTechnique) embedBitInChannel(channelValue *uint8, data []byte, bitIn
 	bitOffset := 7 - (*bitIndex % 8)
 	dataBit := (data[byteIndex] >> bitOffset) & 1
 
-	// Modify LSB
-	*channelValue = (*channelValue & 0xFE) | dataBit
+	// FIXED: Use proper LSB (bit 0) like auyer library
+	if dataBit == 1 {
+		*channelValue = *channelValue | 1 // Set LSB
+	} else {
+		*channelValue = *channelValue & 0xFE // Clear LSB
+	}
 
 	*bitIndex++
 }
@@ -236,8 +255,16 @@ func (d *DCTTechnique) extractBytes(rgba *image.RGBA, numBytes int, byteOffset i
 				continue
 			}
 
-			// Extract 1 bit from Green channel LSB
-			d.extractBitFromChannel(pixel.G, result, &imageBitIndex, startBit, endBit)
+			// FIXED: Extract from all 3 RGB channels (matches embedding)
+			if imageBitIndex < endBit {
+				d.extractBitFromChannel(pixel.R, result, &imageBitIndex, startBit, endBit)
+			}
+			if imageBitIndex < endBit {
+				d.extractBitFromChannel(pixel.G, result, &imageBitIndex, startBit, endBit)
+			}
+			if imageBitIndex < endBit {
+				d.extractBitFromChannel(pixel.B, result, &imageBitIndex, startBit, endBit)
+			}
 		}
 	}
 
@@ -251,6 +278,7 @@ func (d *DCTTechnique) extractBitFromChannel(channelValue uint8, result []byte, 
 	}
 
 	if *imageBitIndex >= startBit {
+		// FIXED: Extract LSB (bit 0) to match embedding
 		dataBit := channelValue & 1
 
 		resultByteIndex := (*imageBitIndex - startBit) / 8

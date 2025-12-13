@@ -2,10 +2,9 @@ package media
 
 import (
 	"context"
-	"log/slog"
-	"os"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -15,7 +14,7 @@ import (
 // TestNewMediaService tests service initialization
 func TestNewMediaService(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
-		logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+		logger := logrus.New()
 		service := NewMediaService(logger)
 
 		assert.NotNil(t, service)
@@ -35,7 +34,7 @@ func TestNewMediaService(t *testing.T) {
 
 // TestLoadMedia tests loading media assets
 func TestLoadMedia(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 
@@ -176,7 +175,7 @@ func TestLoadMedia(t *testing.T) {
 
 // TestDetectFormat tests automatic format detection
 func TestDetectFormat(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 
@@ -246,7 +245,7 @@ func TestDetectFormat(t *testing.T) {
 
 // TestCalculateCapacity tests capacity calculations
 func TestCalculateCapacity(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 
@@ -337,7 +336,7 @@ func TestCalculateCapacity(t *testing.T) {
 
 // TestSanitizeMetadata tests metadata sanitization
 func TestSanitizeMetadata(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 
@@ -400,7 +399,7 @@ func TestSanitizeMetadata(t *testing.T) {
 
 // TestValidateMedia tests media validation
 func TestValidateMedia(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 
@@ -489,7 +488,7 @@ func TestValidateMedia(t *testing.T) {
 
 // TestAnalyzeQuality tests quality analysis
 func TestAnalyzeQuality(t *testing.T) {
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	logger := logrus.New()
 	service := NewMediaService(logger)
 	ctx := context.Background()
 

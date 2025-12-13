@@ -51,4 +51,10 @@ var (
 
 	// ErrIncompatibleMedia indicates the media type is incompatible with the technique.
 	ErrIncompatibleMedia = errors.New("incompatible media type")
+
+	// ErrInsufficientCapacity indicates insufficient capacity for embedding.
+	ErrInsufficientCapacity = errors.New("insufficient capacity for embedding")
+
+	// ErrUnsupportedFormat indicates the media format is not supported by the technique.
+	ErrUnsupportedFormat = errors.New("unsupported media format")
 )

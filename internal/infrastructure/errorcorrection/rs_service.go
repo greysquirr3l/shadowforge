@@ -6,7 +6,8 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"log/slog"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/klauspost/reedsolomon"
 
@@ -15,15 +16,11 @@ import (
 
 // RSService implements ErrorCorrectionService using the klauspost/reedsolomon library.
 type RSService struct {
-	logger *slog.Logger
+	logger *logrus.Logger
 }
 
 // NewRSService creates a new Reed-Solomon service instance.
-func NewRSService(logger *slog.Logger) *RSService {
-	if logger == nil {
-		logger = slog.Default()
-	}
-
+func NewRSService(logger *logrus.Logger) *RSService {
 	return &RSService{
 		logger: logger,
 	}
@@ -43,11 +40,12 @@ func (s *RSService) Encode(ctx context.Context, data []byte, config *errorcorrec
 		return nil, errorcorrection.ErrInvalidShardCount
 	}
 
-	s.logger.InfoContext(ctx, "Encoding data with Reed-Solomon",
-		slog.Int("data_size", len(data)),
-		slog.Int("data_shards", config.DataShards),
-		slog.Int("parity_shards", config.ParityShards),
-		slog.String("redundancy", config.Redundancy.String()))
+	s.logger.WithFields(logrus.Fields{
+		"data_size":     len(data),
+		"data_shards":   config.DataShards,
+		"parity_shards": config.ParityShards,
+		"redundancy":    config.Redundancy.String(),
+	}).Info("Encoding data with Reed-Solomon")
 
 	// Prepend the original data size (4 bytes, big-endian) for recovery
 	originalSize := len(data)
@@ -63,23 +61,26 @@ func (s *RSService) Encode(ctx context.Context, data []byte, config *errorcorrec
 	// Create Reed-Solomon encoder
 	enc, err := reedsolomon.New(config.DataShards, config.ParityShards)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to create Reed-Solomon encoder",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to create Reed-Solomon encoder")
 		return nil, fmt.Errorf("%w: %v", errorcorrection.ErrEncodingFailed, err)
 	}
 
 	// Split data into shards
 	shardData, err := enc.Split(dataWithSize)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to split data into shards",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to split data into shards")
 		return nil, fmt.Errorf("%w: failed to split data: %v", errorcorrection.ErrEncodingFailed, err)
 	}
 
 	// Encode parity shards
 	if err := enc.Encode(shardData); err != nil {
-		s.logger.ErrorContext(ctx, "Failed to encode parity shards",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to encode parity shards")
 		return nil, fmt.Errorf("%w: failed to encode: %v", errorcorrection.ErrEncodingFailed, err)
 	}
 
@@ -108,9 +109,10 @@ func (s *RSService) Encode(ctx context.Context, data []byte, config *errorcorrec
 			isParity,
 		)
 		if err != nil {
-			s.logger.ErrorContext(ctx, "Failed to create shard",
-				slog.Int("index", i),
-				slog.String("error", err.Error()))
+			s.logger.WithFields(logrus.Fields{
+				"index": i,
+				"error": err.Error(),
+			}).Error("Failed to create shard")
 			return nil, fmt.Errorf("failed to create shard %d: %w", i, err)
 		}
 
@@ -119,18 +121,20 @@ func (s *RSService) Encode(ctx context.Context, data []byte, config *errorcorrec
 		shard.SetChecksum(checksum)
 
 		if err := message.AddShard(shard); err != nil {
-			s.logger.ErrorContext(ctx, "Failed to add shard to message",
-				slog.Int("index", i),
-				slog.String("error", err.Error()))
+			s.logger.WithFields(logrus.Fields{
+				"index": i,
+				"error": err.Error(),
+			}).Error("Failed to add shard to message")
 			return nil, fmt.Errorf("failed to add shard %d: %w", i, err)
 		}
 	}
 
-	s.logger.InfoContext(ctx, "Successfully encoded data",
-		slog.String("message_id", messageID.String()),
-		slog.Int("total_shards", len(shardData)),
-		slog.Int("data_shards", config.DataShards),
-		slog.Int("parity_shards", config.ParityShards))
+	s.logger.WithFields(logrus.Fields{
+		"message_id":    messageID.String(),
+		"total_shards":  len(shardData),
+		"data_shards":   config.DataShards,
+		"parity_shards": config.ParityShards,
+	}).Info("Successfully encoded data")
 
 	return message, nil
 }
@@ -151,22 +155,25 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 
 	// Check if we have enough shards
 	if len(shards) < config.DataShards {
-		s.logger.ErrorContext(ctx, "Insufficient shards for recovery",
-			slog.Int("available", len(shards)),
-			slog.Int("required", config.DataShards))
+		s.logger.WithFields(logrus.Fields{
+			"available": len(shards),
+			"required":  config.DataShards,
+		}).Error("Insufficient shards for recovery")
 		return nil, errorcorrection.ErrInsufficientShards
 	}
 
-	s.logger.InfoContext(ctx, "Decoding data from shards",
-		slog.Int("available_shards", len(shards)),
-		slog.Int("required_shards", config.DataShards),
-		slog.Int("total_shards", config.TotalShards()))
+	s.logger.WithFields(logrus.Fields{
+		"available_shards": len(shards),
+		"required_shards":  config.DataShards,
+		"total_shards":     config.TotalShards(),
+	}).Info("Decoding data from shards")
 
 	// Create Reed-Solomon encoder (used for decoding too)
 	enc, err := reedsolomon.New(config.DataShards, config.ParityShards)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to create Reed-Solomon encoder",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to create Reed-Solomon encoder")
 		return nil, fmt.Errorf("%w: %v", errorcorrection.ErrDecodingFailed, err)
 	}
 
@@ -176,9 +183,10 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 
 	for _, shard := range shards {
 		if err := shard.Validate(); err != nil {
-			s.logger.WarnContext(ctx, "Invalid shard detected",
-				slog.Int("index", shard.Index),
-				slog.String("error", err.Error()))
+			s.logger.WithFields(logrus.Fields{
+				"index": shard.Index,
+				"error": err.Error(),
+			}).Warn("Invalid shard detected")
 			continue
 		}
 
@@ -186,9 +194,10 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 		if len(shard.Checksum) > 0 {
 			calculatedChecksum := s.calculateChecksum(shard.Data)
 			if !shard.VerifyChecksum(calculatedChecksum) {
-				s.logger.WarnContext(ctx, "Shard checksum verification failed",
-					slog.Int("index", shard.Index),
-					slog.String("shard_id", shard.ID.String()))
+				s.logger.WithFields(logrus.Fields{
+					"index":    shard.Index,
+					"shard_id": shard.ID.String(),
+				}).Warn("Shard checksum verification failed")
 				return nil, fmt.Errorf("%w: shard %d", errorcorrection.ErrChecksumMismatch, shard.Index)
 			}
 		}
@@ -208,29 +217,33 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 	}
 
 	if len(missingIndices) > 0 {
-		s.logger.InfoContext(ctx, "Reconstructing with missing shards",
-			slog.Int("missing_count", len(missingIndices)),
-			slog.Any("missing_indices", missingIndices))
+		s.logger.WithFields(logrus.Fields{
+			"missing_count":   len(missingIndices),
+			"missing_indices": missingIndices,
+		}).Info("Reconstructing with missing shards")
 	}
 
 	// Verify we have enough shards
 	if len(presentShards) < config.DataShards {
-		s.logger.ErrorContext(ctx, "Still insufficient shards after validation",
-			slog.Int("valid_shards", len(presentShards)),
-			slog.Int("required", config.DataShards))
+		s.logger.WithFields(logrus.Fields{
+			"valid_shards": len(presentShards),
+			"required":     config.DataShards,
+		}).Error("Still insufficient shards after validation")
 		return nil, errorcorrection.ErrInsufficientShards
 	}
 
 	// Reconstruct missing shards if necessary
 	if len(missingIndices) > 0 {
 		if err := enc.Reconstruct(shardData); err != nil {
-			s.logger.ErrorContext(ctx, "Failed to reconstruct missing shards",
-				slog.String("error", err.Error()))
+			s.logger.WithFields(logrus.Fields{
+				"error": err.Error(),
+			}).Error("Failed to reconstruct missing shards")
 			return nil, fmt.Errorf("%w: reconstruction failed: %v", errorcorrection.ErrDecodingFailed, err)
 		}
 
-		s.logger.InfoContext(ctx, "Successfully reconstructed missing shards",
-			slog.Int("reconstructed", len(missingIndices)))
+		s.logger.WithFields(logrus.Fields{
+			"reconstructed": len(missingIndices),
+		}).Info("Successfully reconstructed missing shards")
 	}
 
 	// Join data shards back together
@@ -247,8 +260,9 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 
 	err = enc.Join(&buf, dataShards, totalShardSize)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to join shards",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to join shards")
 		return nil, fmt.Errorf("%w: join failed: %v", errorcorrection.ErrDecodingFailed, err)
 	}
 
@@ -269,9 +283,10 @@ func (s *RSService) Decode(ctx context.Context, shards []*errorcorrection.Shard,
 
 	actualData := recoveredData[4 : 4+originalSize]
 
-	s.logger.InfoContext(ctx, "Successfully decoded data",
-		slog.Int("recovered_size", len(actualData)),
-		slog.Int("shards_used", len(presentShards)))
+	s.logger.WithFields(logrus.Fields{
+		"recovered_size": len(actualData),
+		"shards_used":    len(presentShards),
+	}).Info("Successfully decoded data")
 
 	return actualData, nil
 }
@@ -286,16 +301,18 @@ func (s *RSService) VerifyShards(ctx context.Context, shards []*errorcorrection.
 		return errorcorrection.ErrInsufficientShards
 	}
 
-	s.logger.InfoContext(ctx, "Verifying shard integrity",
-		slog.Int("shard_count", len(shards)))
+	s.logger.WithFields(logrus.Fields{
+		"shard_count": len(shards),
+	}).Info("Verifying shard integrity")
 
 	corruptedCount := 0
 	for _, shard := range shards {
 		// Validate shard structure
 		if err := shard.Validate(); err != nil {
-			s.logger.WarnContext(ctx, "Shard validation failed",
-				slog.Int("index", shard.Index),
-				slog.String("error", err.Error()))
+			s.logger.WithFields(logrus.Fields{
+				"index": shard.Index,
+				"error": err.Error(),
+			}).Warn("Shard validation failed")
 			corruptedCount++
 			continue
 		}
@@ -304,23 +321,26 @@ func (s *RSService) VerifyShards(ctx context.Context, shards []*errorcorrection.
 		if len(shard.Checksum) > 0 {
 			calculatedChecksum := s.calculateChecksum(shard.Data)
 			if !shard.VerifyChecksum(calculatedChecksum) {
-				s.logger.WarnContext(ctx, "Shard checksum mismatch",
-					slog.Int("index", shard.Index),
-					slog.String("shard_id", shard.ID.String()))
+				s.logger.WithFields(logrus.Fields{
+					"index":    shard.Index,
+					"shard_id": shard.ID.String(),
+				}).Warn("Shard checksum mismatch")
 				corruptedCount++
 			}
 		}
 	}
 
 	if corruptedCount > 0 {
-		s.logger.ErrorContext(ctx, "Shard verification completed with errors",
-			slog.Int("corrupted_count", corruptedCount),
-			slog.Int("total_shards", len(shards)))
+		s.logger.WithFields(logrus.Fields{
+			"corrupted_count": corruptedCount,
+			"total_shards":    len(shards),
+		}).Error("Shard verification completed with errors")
 		return fmt.Errorf("%w: %d of %d shards corrupted", errorcorrection.ErrCorruptedShard, corruptedCount, len(shards))
 	}
 
-	s.logger.InfoContext(ctx, "All shards verified successfully",
-		slog.Int("shard_count", len(shards)))
+	s.logger.WithFields(logrus.Fields{
+		"shard_count": len(shards),
+	}).Info("All shards verified successfully")
 
 	return nil
 }
@@ -345,9 +365,10 @@ func (s *RSService) OptimizeConfiguration(ctx context.Context, dataSize int, red
 		return nil, errorcorrection.ErrEmptyData
 	}
 
-	s.logger.InfoContext(ctx, "Optimizing shard configuration",
-		slog.Int("data_size", dataSize),
-		slog.String("redundancy", redundancyLevel.String()))
+	s.logger.WithFields(logrus.Fields{
+		"data_size":  dataSize,
+		"redundancy": redundancyLevel.String(),
+	}).Info("Optimizing shard configuration")
 
 	// Start with default configuration
 	dataShards := errorcorrection.DefaultDataShards
@@ -375,16 +396,18 @@ func (s *RSService) OptimizeConfiguration(ctx context.Context, dataSize int, red
 
 	config, err := errorcorrection.NewShardConfiguration(dataShards, parityShards)
 	if err != nil {
-		s.logger.ErrorContext(ctx, "Failed to create optimized configuration",
-			slog.String("error", err.Error()))
+		s.logger.WithFields(logrus.Fields{
+			"error": err.Error(),
+		}).Error("Failed to create optimized configuration")
 		return nil, err
 	}
 
-	s.logger.InfoContext(ctx, "Optimized configuration created",
-		slog.Int("data_shards", config.DataShards),
-		slog.Int("parity_shards", config.ParityShards),
-		slog.String("redundancy", config.Redundancy.String()),
-		slog.Int("max_failures", config.MaximumFailures()))
+	s.logger.WithFields(logrus.Fields{
+		"data_shards":   config.DataShards,
+		"parity_shards": config.ParityShards,
+		"redundancy":    config.Redundancy.String(),
+		"max_failures":  config.MaximumFailures(),
+	}).Info("Optimized configuration created")
 
 	return config, nil
 }

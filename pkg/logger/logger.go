@@ -1,25 +1,54 @@
 // Package logger provides a global logrus-based logger for Shadowforge.
+// It supports both CLI (colorized text) and API (JSON) modes.
 package logger
 
 import (
 	"io"
 	"os"
+	"strings"
 
 	"github.com/sirupsen/logrus"
+)
+
+// LogMode defines the logging mode (CLI or API)
+type LogMode string
+
+const (
+	// ModeCLI uses colorized text output for interactive CLI
+	ModeCLI LogMode = "cli"
+	// ModeAPI uses JSON output for API server logs
+	ModeAPI LogMode = "api"
 )
 
 var (
 	// Log is the global logger instance
 	Log *logrus.Logger
+	// currentMode tracks the current logging mode
+	currentMode LogMode = ModeCLI
 )
 
 func init() {
-	Log = NewLogger()
+	// Initialize with CLI mode by default
+	Log = NewCLILogger()
 }
 
-// NewLogger creates a new configured logrus logger instance.
+// NewLogger creates a new logger based on the environment.
+// Checks SHADOWFORGE_LOG_MODE environment variable (cli|api).
+// Defaults to CLI mode.
 func NewLogger() *logrus.Logger {
+	mode := os.Getenv("SHADOWFORGE_LOG_MODE")
+	switch strings.ToLower(mode) {
+	case "api", "json":
+		return NewAPILogger()
+	default:
+		return NewCLILogger()
+	}
+}
+
+// NewCLILogger creates a new logger configured for CLI usage with colorized output.
+func NewCLILogger() *logrus.Logger {
 	logger := logrus.New()
+	currentMode = ModeCLI
 
 	// Set output to stdout
 	logger.SetOutput(os.Stdout)
@@ -34,9 +63,77 @@ func NewLogger() *logrus.Logger {
 	})
 
 	// Set default log level to Info
-	logger.SetLevel(logrus.InfoLevel)
+	logger.SetLevel(getLogLevel())
 
 	return logger
+}
+
+// NewAPILogger creates a new logger configured for API server usage with JSON output.
+func NewAPILogger() *logrus.Logger {
+	logger := logrus.New()
+	currentMode = ModeAPI
+
+	// Set output to stdout
+	logger.SetOutput(os.Stdout)
+
+	// Use JSON formatter for API/server logs
+	logger.SetFormatter(&logrus.JSONFormatter{
+		TimestampFormat:   "2006-01-02T15:04:05.000Z07:00",
+		DisableTimestamp:  false,
+		DisableHTMLEscape: true,
+		PrettyPrint:       false, // Set to true for development if needed
+		FieldMap: logrus.FieldMap{
+			logrus.FieldKeyTime:  "timestamp",
+			logrus.FieldKeyLevel: "level",
+			logrus.FieldKeyMsg:   "message",
+			logrus.FieldKeyFunc:  "caller",
+		},
+	})
+
+	// Set default log level to Info
+	logger.SetLevel(getLogLevel())
+
+	return logger
+}
+
+// getLogLevel reads the log level from environment variable.
+// Checks SHADOWFORGE_LOG_LEVEL (debug|info|warn|error|fatal|panic).
+// Defaults to Info.
+func getLogLevel() logrus.Level {
+	level := os.Getenv("SHADOWFORGE_LOG_LEVEL")
+	switch strings.ToLower(level) {
+	case "debug":
+		return logrus.DebugLevel
+	case "trace":
+		return logrus.TraceLevel
+	case "warn", "warning":
+		return logrus.WarnLevel
+	case "error":
+		return logrus.ErrorLevel
+	case "fatal":
+		return logrus.FatalLevel
+	case "panic":
+		return logrus.PanicLevel
+	default:
+		return logrus.InfoLevel
+	}
+}
+
+// SetMode switches the logger to the specified mode (CLI or API).
+func SetMode(mode LogMode) {
+	switch mode {
+	case ModeAPI:
+		Log = NewAPILogger()
+	case ModeCLI:
+		Log = NewCLILogger()
+	default:
+		Log = NewCLILogger()
+	}
+}
+
+// GetMode returns the current logging mode.
+func GetMode() LogMode {
+	return currentMode
 }
 
 // SetLevel sets the global logger level.

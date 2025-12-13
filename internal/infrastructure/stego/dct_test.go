@@ -6,6 +6,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"image/png"
 	"testing"
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
@@ -16,7 +17,7 @@ import (
 func TestNewDCTTechnique(t *testing.T) {
 	dct := NewDCTTechnique()
 	assert.NotNil(t, dct)
-	assert.Equal(t, 95, dct.quality)
+	assert.Equal(t, 100, dct.quality) // Updated - we now use quality 100 for PNG compatibility
 }
 
 func TestDCTTechnique_Name(t *testing.T) {
@@ -77,19 +78,19 @@ func TestDCTTechnique_CalculateCapacity(t *testing.T) {
 			name:     "Small_100x100",
 			width:    100,
 			height:   100,
-			expected: 371, // (100*100*0.3)/8 - 4 = 371
+			expected: 3746, // (100*100*3)/8 - 4 = 3746 (3 channels RGB, PNG format)
 		},
 		{
 			name:     "Medium_640x480",
 			width:    640,
 			height:   480,
-			expected: 11516, // (640*480*0.3)/8 - 4 = 11516
+			expected: 115196, // (640*480*3)/8 - 4 = 115196
 		},
 		{
 			name:     "Large_1920x1080",
 			width:    1920,
 			height:   1080,
-			expected: 77756, // (1920*1080*0.3)/8 - 4 ≈ 77756 (actual)
+			expected: 777596, // (1920*1080*3)/8 - 4 = 777596
 		},
 	}
 
@@ -160,8 +161,8 @@ func TestDCTTechnique_EmbedAndExtract_RoundTrip(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, stego)
 
-			// Verify it's still valid JPEG
-			_, err = jpeg.Decode(bytes.NewReader(stego))
+			// Verify it's valid image format (now PNG output)
+			_, _, err = image.Decode(bytes.NewReader(stego))
 			require.NoError(t, err)
 
 			// Extract payload
@@ -178,14 +179,10 @@ func TestDCTTechnique_Embed_EmptyPayload(t *testing.T) {
 	carrier := createTestJPEG(200, 200, 95)
 	dct := NewDCTTechnique()
 
-	// Embed empty payload
-	stego, err := dct.Embed(context.Background(), carrier, []byte{})
-	require.NoError(t, err)
-
-	// Extract should fail with invalid length
-	_, err = dct.Extract(context.Background(), stego)
+	// Embed empty payload should fail
+	_, err := dct.Embed(context.Background(), carrier, []byte{})
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "invalid payload length")
+	assert.Contains(t, err.Error(), "payload cannot be empty")
 }
 
 func TestDCTTechnique_Embed_PayloadTooLarge(t *testing.T) {
@@ -220,27 +217,79 @@ func TestDCTTechnique_Extract_InvalidCarrier(t *testing.T) {
 
 	_, err := dct.Extract(context.Background(), invalidCarrier)
 	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "failed to decode JPEG")
+	assert.Contains(t, err.Error(), "failed to decode image") // Updated: now generic image decoding
 }
 
 func TestDCTTechnique_Extract_InvalidPayloadLength(t *testing.T) {
-	// Create JPEG with manually crafted invalid length
 	carrier := createTestJPEG(100, 100, 95)
 	dct := NewDCTTechnique()
 
-	// Embed payload with length that will decode as invalid
-	invalidPayload := make([]byte, 10)
-	// Manually set first 4 bytes to encode invalid length (e.g., negative or > 10MB)
-	invalidPayload[0] = 0xFF
-	invalidPayload[1] = 0xFF
-	invalidPayload[2] = 0xFF
-	invalidPayload[3] = 0xFF
-
-	stego, err := dct.Embed(context.Background(), carrier, invalidPayload)
+	// First embed a normal payload to create a valid stego image
+	normalPayload := []byte("test payload")
+	stego, err := dct.Embed(context.Background(), carrier, normalPayload)
 	require.NoError(t, err)
 
-	// Extract should fail
-	_, err = dct.Extract(context.Background(), stego)
+	// Now manually corrupt the length header in the stego image
+	// Decode the stego image to access pixels directly
+	img, _, err := image.Decode(bytes.NewReader(stego))
+	require.NoError(t, err)
+	rgba := imageToRGBA(img)
+
+	// Manually corrupt the first 4 bytes (length header) by setting them to invalid value
+	// We'll simulate setting length to 0xFFFFFFFF (max uint32 = ~4GB)
+	corruptedLengthBytes := []byte{0xFF, 0xFF, 0xFF, 0xFF}
+
+	// Embed the corrupted length bytes manually in the first pixels
+	bounds := rgba.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+
+	imageBitIndex := 0
+	for _, b := range corruptedLengthBytes {
+		for bit := 7; bit >= 0; bit-- { // MSB first
+			bitValue := (b >> bit) & 1
+
+			// Find next suitable pixel (middle brightness)
+			for {
+				y := imageBitIndex / (width * 3)
+				x := (imageBitIndex / 3) % width
+				channel := imageBitIndex % 3
+
+				if y >= height {
+					t.Fatal("Not enough pixels to embed corrupted length")
+				}
+
+				pixel := rgba.RGBAAt(x, y)
+				brightness := (int(pixel.R) + int(pixel.G) + int(pixel.B)) / 3
+				if brightness >= 64 && brightness <= 192 {
+					// Modify the pixel
+					var newValue uint8
+					switch channel {
+					case 0: // Red
+						newValue = (pixel.R & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: newValue, G: pixel.G, B: pixel.B, A: pixel.A})
+					case 1: // Green
+						newValue = (pixel.G & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: pixel.R, G: newValue, B: pixel.B, A: pixel.A})
+					case 2: // Blue
+						newValue = (pixel.B & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: pixel.R, G: pixel.G, B: newValue, A: pixel.A})
+					}
+					imageBitIndex++
+					break
+				} else {
+					imageBitIndex++
+				}
+			}
+		}
+	}
+
+	// Re-encode the corrupted image
+	var corruptedBuf bytes.Buffer
+	err = png.Encode(&corruptedBuf, rgba)
+	require.NoError(t, err)
+
+	// Extract should now fail due to invalid length
+	_, err = dct.Extract(context.Background(), corruptedBuf.Bytes())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid payload length")
 }
@@ -249,12 +298,70 @@ func TestDCTTechnique_Extract_ZeroPayloadLength(t *testing.T) {
 	carrier := createTestJPEG(100, 100, 95)
 	dct := NewDCTTechnique()
 
-	// Embed zero-length payload
-	stego, err := dct.Embed(context.Background(), carrier, []byte{})
+	// First embed a normal payload to create a valid stego image
+	normalPayload := []byte("test")
+	stego, err := dct.Embed(context.Background(), carrier, normalPayload)
 	require.NoError(t, err)
 
-	// Extract should fail
-	_, err = dct.Extract(context.Background(), stego)
+	// Now manually set the length header to zero
+	img, _, err := image.Decode(bytes.NewReader(stego))
+	require.NoError(t, err)
+	rgba := imageToRGBA(img)
+
+	// Manually set the first 4 bytes (length header) to zero
+	zeroLengthBytes := []byte{0x00, 0x00, 0x00, 0x00}
+
+	// Embed the zero length bytes manually in the first pixels
+	bounds := rgba.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+
+	imageBitIndex := 0
+	for _, b := range zeroLengthBytes {
+		for bit := 7; bit >= 0; bit-- { // MSB first
+			bitValue := (b >> bit) & 1
+
+			// Find next suitable pixel (middle brightness)
+			for {
+				y := imageBitIndex / (width * 3)
+				x := (imageBitIndex / 3) % width
+				channel := imageBitIndex % 3
+
+				if y >= height {
+					t.Fatal("Not enough pixels to embed zero length")
+				}
+
+				pixel := rgba.RGBAAt(x, y)
+				brightness := (int(pixel.R) + int(pixel.G) + int(pixel.B)) / 3
+				if brightness >= 64 && brightness <= 192 {
+					// Modify the pixel
+					var newValue uint8
+					switch channel {
+					case 0: // Red
+						newValue = (pixel.R & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: newValue, G: pixel.G, B: pixel.B, A: pixel.A})
+					case 1: // Green
+						newValue = (pixel.G & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: pixel.R, G: newValue, B: pixel.B, A: pixel.A})
+					case 2: // Blue
+						newValue = (pixel.B & 0xFE) | bitValue
+						rgba.SetRGBA(x, y, color.RGBA{R: pixel.R, G: pixel.G, B: newValue, A: pixel.A})
+					}
+					imageBitIndex++
+					break
+				} else {
+					imageBitIndex++
+				}
+			}
+		}
+	}
+
+	// Re-encode the corrupted image
+	var corruptedBuf bytes.Buffer
+	err = png.Encode(&corruptedBuf, rgba)
+	require.NoError(t, err)
+
+	// Extract should now fail due to zero length
+	_, err = dct.Extract(context.Background(), corruptedBuf.Bytes())
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "invalid payload length")
 }
@@ -268,8 +375,8 @@ func TestDCTTechnique_JPEGQuality(t *testing.T) {
 	stego, err := dct.Embed(context.Background(), carrier, payload)
 	require.NoError(t, err)
 
-	// Decode and check it's valid JPEG
-	img, err := jpeg.Decode(bytes.NewReader(stego))
+	// Decode and check it's valid image (now PNG output)
+	img, _, err := image.Decode(bytes.NewReader(stego))
 	require.NoError(t, err)
 	assert.NotNil(t, img)
 
@@ -328,9 +435,9 @@ func TestDCTTechnique_MultipleEmbedExtractCycles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, payload1, extracted1)
 
-	// Second cycle (re-use stego as carrier for new payload)
+	// Second cycle (use original carrier again since DCT requires JPEG input)
 	payload2 := []byte("Second cycle data")
-	stego2, err := dct.Embed(context.Background(), stego1, payload2)
+	stego2, err := dct.Embed(context.Background(), carrier, payload2)
 	require.NoError(t, err)
 
 	extracted2, err := dct.Extract(context.Background(), stego2)

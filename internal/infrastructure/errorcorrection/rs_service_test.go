@@ -3,10 +3,10 @@ package errorcorrection_test
 import (
 	"context"
 	"crypto/rand"
-	"log/slog"
 	"sync"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -16,7 +16,7 @@ import (
 
 func TestNewRSService(t *testing.T) {
 	t.Run("with_logger", func(t *testing.T) {
-		logger := slog.Default()
+		logger := logrus.New()
 		service := infra.NewRSService(logger)
 
 		assert.NotNil(t, service)
@@ -30,7 +30,7 @@ func TestNewRSService(t *testing.T) {
 }
 
 func TestRSService_Encode(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	t.Run("success_balanced_config", func(t *testing.T) {
@@ -131,7 +131,7 @@ func TestRSService_Encode(t *testing.T) {
 }
 
 func TestRSService_Decode(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	t.Run("success_all_shards_present", func(t *testing.T) {
@@ -282,7 +282,7 @@ func TestRSService_Decode(t *testing.T) {
 }
 
 func TestRSService_VerifyShards(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	t.Run("success_all_valid", func(t *testing.T) {
@@ -342,7 +342,7 @@ func TestRSService_VerifyShards(t *testing.T) {
 }
 
 func TestRSService_CalculateCapacity(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 
 	t.Run("success_balanced_config", func(t *testing.T) {
 		config, err := errorcorrection.NewShardConfiguration(10, 5)
@@ -379,7 +379,7 @@ func TestRSService_CalculateCapacity(t *testing.T) {
 }
 
 func TestRSService_OptimizeConfiguration(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	t.Run("small_data_conservative", func(t *testing.T) {
@@ -438,7 +438,7 @@ func TestRSService_OptimizeConfiguration(t *testing.T) {
 }
 
 func TestRSService_ConcurrentEncode(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	// Test concurrent encoding operations
@@ -481,7 +481,7 @@ func TestRSService_ConcurrentEncode(t *testing.T) {
 }
 
 func TestRSService_ConcurrentDecode(t *testing.T) {
-	service := infra.NewRSService(slog.Default())
+	service := infra.NewRSService(logrus.New())
 	ctx := context.Background()
 
 	// Prepare test messages
