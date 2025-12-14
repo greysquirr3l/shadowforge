@@ -114,7 +114,7 @@ func TestManifestSerializer_SignVerify(t *testing.T) {
 			name:        "different_manifest_invalid",
 			manifest:    createTestManifest(t, 5, 3, nil),
 			hmacKey:     []byte("a-valid-32byte-hmac-key-here!!!!"), // Exactly 32 bytes
-			expectValid: true,                                         // Valid for its own manifest
+			expectValid: true,                                       // Valid for its own manifest
 		},
 	}
 
