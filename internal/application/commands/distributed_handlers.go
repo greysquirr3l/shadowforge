@@ -1,0 +1,416 @@
+package commands
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"runtime"
+	"sync"
+	"time"
+
+	"github.com/sirupsen/logrus"
+
+	"github.com/greysquirr3l/shadowforge/internal/domain/crypto"
+	"github.com/greysquirr3l/shadowforge/internal/domain/distribution"
+	"github.com/greysquirr3l/shadowforge/internal/domain/errorcorrection"
+	"github.com/greysquirr3l/shadowforge/internal/domain/media"
+	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
+)
+
+// EmbedDistributedHandler handles distributed embed command operations (1:N pattern).
+type EmbedDistributedHandler struct {
+	stegoService        stego.StegoService
+	cryptoService       crypto.CryptoService
+	ecService           errorcorrection.ErrorCorrectionService
+	mediaService        media.Service
+	distributionService distribution.Service
+	manifestSerializer  *distribution.ManifestSerializer
+	logger              *logrus.Logger
+}
+
+// NewEmbedDistributedHandler creates a new distributed embed command handler.
+func NewEmbedDistributedHandler(
+	stegoSvc stego.StegoService,
+	cryptoSvc crypto.CryptoService,
+	ecSvc errorcorrection.ErrorCorrectionService,
+	mediaSvc media.Service,
+	distSvc distribution.Service,
+	manifestSer *distribution.ManifestSerializer,
+	logger *logrus.Logger,
+) *EmbedDistributedHandler {
+	return &EmbedDistributedHandler{
+		stegoService:        stegoSvc,
+		cryptoService:       cryptoSvc,
+		ecService:           ecSvc,
+		mediaService:        mediaSvc,
+		distributionService: distSvc,
+		manifestSerializer:  manifestSer,
+		logger:              logger,
+	}
+}
+
+// Handle processes the distributed embed command.
+func (h *EmbedDistributedHandler) Handle(ctx context.Context, cmd EmbedDistributedCommand) (*EmbedDistributedResult, error) {
+	start := time.Now()
+
+	h.logger.WithFields(logrus.Fields{
+		"input_file":       cmd.InputFile,
+		"cover_files":      len(cmd.CoverFiles),
+		"output_directory": cmd.OutputDirectory,
+		"manifest_path":    cmd.ManifestPath,
+		"technique":        cmd.Technique,
+		"pattern":          cmd.Pattern,
+	}).Info("Starting distributed embed operation")
+
+	// Validate command
+	if err := cmd.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid distributed embed command: %w", err)
+	}
+
+	// Read input payload
+	payload, err := os.ReadFile(cmd.InputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read input file %s: %w", cmd.InputFile, err)
+	}
+
+	h.logger.WithField("payload_size", len(payload)).Info("Payload loaded")
+
+	// Encrypt payload if password provided
+	var processedPayload []byte = payload
+	var encryptionUsed bool
+	if cmd.Password != "" {
+		encryptionKey, err := h.cryptoService.DeriveKey(ctx, cmd.Password, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to derive encryption key: %w", err)
+		}
+
+		encryptedPayload, err := h.cryptoService.Encrypt(ctx, payload, encryptionKey, crypto.Kyber1024)
+		if err != nil {
+			return nil, fmt.Errorf("failed to encrypt payload: %w", err)
+		}
+
+		processedPayload = encryptedPayload.Data
+		encryptionUsed = true
+		h.logger.Info("Payload encrypted successfully")
+	}
+
+	// Calculate shard configuration
+	totalShards := len(cmd.CoverFiles)
+	var dataShards, parityShards int
+
+	if cmd.DataShards > 0 && cmd.ParityShards > 0 {
+		// User-specified configuration
+		dataShards = cmd.DataShards
+		parityShards = cmd.ParityShards
+	} else if cmd.RedundancyLevel > 0 {
+		// Calculate from redundancy level
+		dataShards = int(float64(totalShards) / (1.0 + cmd.RedundancyLevel))
+		parityShards = totalShards - dataShards
+	} else {
+		// Use distribution service to calculate optimal configuration
+		dataShards, parityShards, err = h.distributionService.CalculateOptimalSharding(ctx, int64(len(processedPayload)), totalShards)
+		if err != nil {
+			return nil, fmt.Errorf("failed to calculate optimal sharding: %w", err)
+		}
+	}
+
+	requiredShards := cmd.RequiredShards
+	if requiredShards == 0 {
+		requiredShards = dataShards
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"total_shards":    totalShards,
+		"data_shards":     dataShards,
+		"parity_shards":   parityShards,
+		"required_shards": requiredShards,
+	}).Info("Shard configuration calculated")
+
+	// Create distribution strategy using service
+	pattern := cmd.Pattern
+	if pattern == "" {
+		pattern = distribution.PatternOneToMany
+	}
+
+	strategy, err := h.distributionService.CreateStrategy(
+		ctx,
+		pattern,
+		dataShards,
+		parityShards,
+		cmd.CoverFiles,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create distribution strategy: %w", err)
+	}
+
+	strategyID := strategy.ID
+	h.logger.WithField("strategy_id", strategyID).Info("Distribution strategy created")
+
+	// Apply Reed-Solomon error correction
+	shardConfig := &errorcorrection.ShardConfiguration{
+		DataShards:   dataShards,
+		ParityShards: parityShards,
+	}
+
+	protectedMessage, err := h.ecService.Encode(ctx, processedPayload, shardConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode payload with error correction: %w", err)
+	}
+
+	h.logger.WithField("total_shards", len(protectedMessage.Shards)).Info("Reed-Solomon encoding complete")
+
+	// Read all cover media
+	coverMedia := make([][]byte, len(cmd.CoverFiles))
+	for i, coverFile := range cmd.CoverFiles {
+		coverData, err := os.ReadFile(coverFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read cover file %s: %w", coverFile, err)
+		}
+		coverMedia[i] = coverData
+	}
+
+	// Auto-detect technique if not specified (use first cover file as reference)
+	technique := cmd.Technique
+	if technique == "" && len(coverMedia) > 0 {
+		technique, err = h.stegoService.OptimizeTechnique(ctx, coverMedia[0], int64(len(payload)/totalShards))
+		if err != nil {
+			return nil, fmt.Errorf("failed to auto-detect technique: %w", err)
+		}
+		h.logger.WithField("auto_detected_technique", technique).Info("Auto-detected steganography technique")
+	}
+
+	// Distribute shards across cover media (simple round-robin allocation)
+	// Each shard goes to a corresponding cover file
+	if len(protectedMessage.Shards) != len(cmd.CoverFiles) {
+		return nil, fmt.Errorf("shard count (%d) must match cover file count (%d)",
+			len(protectedMessage.Shards), len(cmd.CoverFiles))
+	}
+
+	h.logger.WithField("shard_count", len(protectedMessage.Shards)).Info("Beginning parallel shard embedding")
+
+	// Ensure output directory exists
+	if err := os.MkdirAll(cmd.OutputDirectory, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Parallel embedding with goroutine pool
+	maxWorkers := cmd.MaxWorkers
+	if maxWorkers <= 0 {
+		maxWorkers = runtime.NumCPU()
+	}
+
+	type embeddingTask struct {
+		index     int
+		shardData []byte
+		coverData []byte
+		coverFile string
+	}
+
+	type embeddingResult struct {
+		index      int
+		stegoData  []byte
+		outputPath string
+		capacity   float64
+		err        error
+	}
+
+	tasks := make(chan embeddingTask, len(protectedMessage.Shards))
+	results := make(chan embeddingResult, len(protectedMessage.Shards))
+	var wg sync.WaitGroup
+
+	// Start worker goroutines
+	for w := 0; w < maxWorkers; w++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+			for task := range tasks {
+				h.logger.WithFields(logrus.Fields{
+					"worker": workerID,
+					"shard":  task.index,
+				}).Debug("Processing shard embedding")
+
+				// Calculate capacity
+				capacity, capErr := h.stegoService.CalculateCapacity(ctx, task.coverData, technique)
+				if capErr != nil {
+					results <- embeddingResult{index: task.index, err: fmt.Errorf("capacity calculation failed: %w", capErr)}
+					continue
+				}
+
+				if int64(len(task.shardData)) > capacity {
+					results <- embeddingResult{index: task.index, err: fmt.Errorf("shard too large: %d bytes, max capacity: %d bytes", len(task.shardData), capacity)}
+					continue
+				}
+
+				// Embed shard
+				stegoContainer, embedErr := h.stegoService.Embed(ctx, task.coverData, task.shardData, technique)
+				if embedErr != nil {
+					results <- embeddingResult{index: task.index, err: fmt.Errorf("embedding failed: %w", embedErr)}
+					continue
+				}
+
+				// Generate output filename
+				baseFilename := filepath.Base(task.coverFile)
+				ext := filepath.Ext(baseFilename)
+				nameWithoutExt := baseFilename[:len(baseFilename)-len(ext)]
+				outputFilename := fmt.Sprintf("%s_shard_%03d%s", nameWithoutExt, task.index, ext)
+				outputPath := filepath.Join(cmd.OutputDirectory, outputFilename)
+
+				results <- embeddingResult{
+					index:      task.index,
+					stegoData:  stegoContainer.CoverMedia,
+					outputPath: outputPath,
+					capacity:   float64(len(task.shardData)) / float64(capacity) * 100.0,
+					err:        nil,
+				}
+			}
+		}(w)
+	}
+
+	// Queue embedding tasks (1:1 mapping: shard i -> cover file i)
+	for i := range protectedMessage.Shards {
+		tasks <- embeddingTask{
+			index:     i,
+			shardData: protectedMessage.Shards[i].Data,
+			coverData: coverMedia[i],
+			coverFile: cmd.CoverFiles[i],
+		}
+	}
+	close(tasks)
+
+	// Wait for all workers to complete
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Collect results
+	outputFiles := make([]string, len(protectedMessage.Shards))
+	var capacitySum float64
+	var failedShards []int
+
+	for result := range results {
+		if result.err != nil {
+			h.logger.WithFields(logrus.Fields{
+				"shard": result.index,
+				"error": result.err,
+			}).Error("Shard embedding failed")
+			failedShards = append(failedShards, result.index)
+			continue
+		}
+
+		// Write stego file
+		if err := os.WriteFile(result.outputPath, result.stegoData, 0644); err != nil {
+			h.logger.WithFields(logrus.Fields{
+				"shard":       result.index,
+				"output_file": result.outputPath,
+				"error":       err,
+			}).Error("Failed to write stego file")
+			failedShards = append(failedShards, result.index)
+			continue
+		}
+
+		outputFiles[result.index] = result.outputPath
+		capacitySum += result.capacity
+		h.logger.WithField("shard", result.index).Debug("Shard embedded successfully")
+	}
+
+	// Check if we have enough successful shards
+	successfulShards := len(protectedMessage.Shards) - len(failedShards)
+	if successfulShards < requiredShards {
+		return nil, fmt.Errorf("insufficient successful embeddings: %d/%d (required: %d)",
+			successfulShards, len(protectedMessage.Shards), requiredShards)
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"successful_shards": successfulShards,
+		"failed_shards":     len(failedShards),
+		"total_shards":      len(protectedMessage.Shards),
+	}).Info("Parallel embedding complete")
+
+	// Generate manifest
+	manifestID, err := distribution.NewManifestID()
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate manifest ID: %w", err)
+	}
+
+	shardMetadata := make([]distribution.ShardMetadata, 0, len(protectedMessage.Shards))
+
+	for i := range protectedMessage.Shards {
+		// Check if this shard failed
+		failed := false
+		for _, failedIdx := range failedShards {
+			if failedIdx == i {
+				failed = true
+				break
+			}
+		}
+		if failed {
+			continue
+		}
+
+		// Get file info
+		fileInfo, _ := os.Stat(outputFiles[i])
+		var fileSize int64
+		if fileInfo != nil {
+			fileSize = fileInfo.Size()
+		}
+
+		metadata := distribution.ShardMetadata{
+			Index:    i,
+			Size:     fileSize,
+			Checksum: fmt.Sprintf("%x", protectedMessage.Shards[i].Data[:16]), // Simple checksum
+			MediaID:  cmd.CoverFiles[i],                                       // Use cover file path as media ID
+		}
+		shardMetadata = append(shardMetadata, metadata)
+	}
+
+	manifest := &distribution.ShardManifest{
+		ID:             manifestID,
+		StrategyID:     strategyID,
+		ShardMetadata:  shardMetadata,
+		TotalShards:    totalShards,
+		RequiredShards: requiredShards,
+		CreatedAt:      time.Now(),
+	}
+
+	// Serialize and save manifest
+	manifestData, err := h.manifestSerializer.Marshal(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize manifest: %w", err)
+	}
+
+	if err := os.WriteFile(cmd.ManifestPath, manifestData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write manifest file: %w", err)
+	}
+
+	h.logger.WithField("manifest_path", cmd.ManifestPath).Info("Manifest generated and saved")
+
+	// Build result
+	result := &EmbedDistributedResult{
+		OutputFiles:     outputFiles,
+		ManifestPath:    cmd.ManifestPath,
+		Technique:       technique,
+		Pattern:         pattern,
+		PayloadSize:     int64(len(payload)),
+		TotalShards:     totalShards,
+		DataShards:      dataShards,
+		ParityShards:    parityShards,
+		RequiredShards:  requiredShards,
+		AverageCapacity: capacitySum / float64(successfulShards),
+		ProcessingTime:  time.Since(start).Milliseconds(),
+		ParallelWorkers: maxWorkers,
+		EncryptionUsed:  encryptionUsed,
+		ManifestSigned:  true, // HMAC signature always applied
+		FailedShards:    failedShards,
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"output_files":    len(result.OutputFiles),
+		"manifest_path":   result.ManifestPath,
+		"processing_time": result.ProcessingTime,
+		"failed_shards":   len(failedShards),
+	}).Info("Distributed embed operation complete")
+
+	return result, nil
+}
