@@ -221,6 +221,7 @@ curl -X POST http://localhost:8080/api/v1/embed \
 ### Recent Achievements (December 2025)
 
 **Phase 4 - Distribution Patterns (100% Complete)**:
+
 - ✅ One-to-One pattern (traditional steganography)
 - ✅ One-to-Many pattern (distributed K-of-N secret splitting)
 - ✅ Many-to-One pattern (batch aggregation)
@@ -231,14 +232,16 @@ curl -X POST http://localhost:8080/api/v1/embed \
 - ✅ HMAC-protected manifest serialization
 
 **Phase 3 - Steganography Techniques**:
+
 - ✅ LSB Image (PNG/BMP) - 100% data integrity
-- ✅ DCT JPEG - 100% data integrity  
+- ✅ DCT JPEG - 100% data integrity
 - ✅ Zero-Width Text - 100% data integrity
 - ✅ Palette GIF/PNG - 100% data integrity
 - ✅ LSB Audio (WAV) - 100% data integrity
 - ⚠️ Phase/Echo Audio - Stub implementations (FFT needed)
 
 **Phase 5 - CLI Application**:
+
 - ✅ Fully functional CLI (`bin/shadowforge` 8.2MB)
 - ✅ Real backend integration (no simulation)
 - ✅ Commands: embed, extract, analyze, keygen, formats
@@ -296,6 +299,7 @@ uses production-grade cryptography (NIST PQC standards) and has comprehensive te
 do not use in production environments until Phase 7 (Security Hardening) is complete.
 
 **Current Security Measures**:
+
 - ✅ 90%+ test coverage for cryptographic operations
 - ✅ All tests pass with race detector
 - ✅ Constant-time operations for crypto
