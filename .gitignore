@@ -12,3 +12,4 @@ INITIAL_PROMPT.md
 .env.(local|development|production|test)
 test_output.txt
 .serena/
+pexels_api.txt
