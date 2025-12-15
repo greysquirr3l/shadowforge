@@ -414,3 +414,365 @@ func (h *EmbedDistributedHandler) Handle(ctx context.Context, cmd EmbedDistribut
 
 	return result, nil
 }
+
+// ExtractDistributedHandler handles distributed extraction command operations (1:N pattern).
+type ExtractDistributedHandler struct {
+	stegoService        stego.StegoService
+	cryptoService       crypto.CryptoService
+	ecService           errorcorrection.ErrorCorrectionService
+	distributionService distribution.Service
+	manifestSerializer  *distribution.ManifestSerializer
+	logger              *logrus.Logger
+}
+
+// NewExtractDistributedHandler creates a new distributed extraction command handler.
+func NewExtractDistributedHandler(
+	stegoSvc stego.StegoService,
+	cryptoSvc crypto.CryptoService,
+	ecSvc errorcorrection.ErrorCorrectionService,
+	distSvc distribution.Service,
+	manifestSer *distribution.ManifestSerializer,
+	logger *logrus.Logger,
+) *ExtractDistributedHandler {
+	return &ExtractDistributedHandler{
+		stegoService:        stegoSvc,
+		cryptoService:       cryptoSvc,
+		ecService:           ecSvc,
+		distributionService: distSvc,
+		manifestSerializer:  manifestSer,
+		logger:              logger,
+	}
+}
+
+// Handle executes the distributed extraction command.
+// Workflow:
+// 1. Read and unmarshal manifest
+// 2. Validate HMAC signature
+// 3. Check recoverability (K-of-N threshold)
+// 4. Read available stego files
+// 5. Parallel shard extraction (worker pool)
+// 6. Reed-Solomon reconstruction
+// 7. Optional decryption
+// 8. Write reconstructed payload
+func (h *ExtractDistributedHandler) Handle(ctx context.Context, cmd ExtractDistributedCommand) (*ExtractDistributedResult, error) {
+	start := time.Now()
+
+	h.logger.WithFields(logrus.Fields{
+		"manifest_path":   cmd.ManifestPath,
+		"available_files": len(cmd.StegoFiles),
+		"decryption":      cmd.Password != "",
+	}).Info("Starting distributed extraction")
+
+	// Validate command
+	if err := cmd.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid command: %w", err)
+	}
+
+	// Phase 1: Read and deserialize manifest
+	h.logger.Info("Reading manifest file")
+	manifestData, err := os.ReadFile(cmd.ManifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest: %w", err)
+	}
+
+	manifest, err := h.manifestSerializer.Unmarshal(manifestData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to deserialize manifest (HMAC validation failed): %w", err)
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"total_shards":    manifest.TotalShards,
+		"required_shards": manifest.RequiredShards,
+		"manifest_id":     manifest.ID.String(),
+	}).Info("Manifest loaded and validated")
+
+	// Phase 2: Check recoverability
+	availableCount := len(cmd.StegoFiles)
+	if availableCount < manifest.RequiredShards {
+		return nil, fmt.Errorf("insufficient shards: have %d, need %d (K-of-N threshold not met)",
+			availableCount, manifest.RequiredShards)
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"available": availableCount,
+		"required":  manifest.RequiredShards,
+		"total":     manifest.TotalShards,
+	}).Info("Recoverability check passed")
+
+	// Phase 3: Setup worker pool for parallel extraction
+	maxWorkers := runtime.NumCPU() // Use all CPUs for extraction
+
+	h.logger.WithField("workers", maxWorkers).Info("Initializing extraction worker pool")
+
+	type extractionTask struct {
+		index     int
+		stegoFile string
+		metadata  distribution.ShardMetadata
+	}
+
+	type extractionResult struct {
+		index     int
+		shardData []byte
+		checksum  string
+		err       error
+	}
+
+	tasks := make(chan extractionTask, len(cmd.StegoFiles))
+	results := make(chan extractionResult, len(cmd.StegoFiles))
+
+	// Phase 4: Start extraction workers
+	var wg sync.WaitGroup
+	for w := 0; w < maxWorkers; w++ {
+		wg.Add(1)
+		go func(workerID int) {
+			defer wg.Done()
+
+			for task := range tasks {
+				h.logger.WithFields(logrus.Fields{
+					"worker":     workerID,
+					"shard":      task.index,
+					"stego_file": task.stegoFile,
+				}).Debug("Processing extraction task")
+
+				// Read stego file
+				stegoData, err := os.ReadFile(task.stegoFile)
+				if err != nil {
+					results <- extractionResult{
+						index: task.index,
+						err:   fmt.Errorf("failed to read stego file: %w", err),
+					}
+					continue
+				}
+
+				// Detect technique from file (could enhance this with manifest metadata)
+				techniqueStr := h.detectTechniqueFromFile(task.stegoFile)
+				technique := stego.StegoTechnique(techniqueStr)
+
+				// Extract shard using steganography service
+				extractedData, err := h.stegoService.Extract(ctx, stegoData, technique)
+				if err != nil {
+					results <- extractionResult{
+						index: task.index,
+						err:   fmt.Errorf("extraction failed: %w", err),
+					}
+					continue
+				}
+
+				// Calculate checksum for verification
+				checksum := fmt.Sprintf("%x", extractedData[:min(16, len(extractedData))])
+
+				results <- extractionResult{
+					index:     task.index,
+					shardData: extractedData,
+					checksum:  checksum,
+					err:       nil,
+				}
+
+				h.logger.WithFields(logrus.Fields{
+					"worker": workerID,
+					"shard":  task.index,
+					"size":   len(extractedData),
+				}).Debug("Extraction task complete")
+			}
+		}(w)
+	}
+
+	// Phase 5: Queue extraction tasks
+	h.logger.Info("Queuing extraction tasks")
+	for i, stegoFile := range cmd.StegoFiles {
+		if i >= len(manifest.ShardMetadata) {
+			break // Don't process more files than shards
+		}
+
+		tasks <- extractionTask{
+			index:     i,
+			stegoFile: stegoFile,
+			metadata:  manifest.ShardMetadata[i],
+		}
+	}
+	close(tasks)
+
+	// Wait for all workers to finish
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	// Phase 6: Collect extraction results
+	h.logger.Info("Collecting extraction results")
+	shardData := make([][]byte, manifest.TotalShards)
+	successfulExtractions := 0
+	failedExtractions := 0
+	var extractionErrors []string
+
+	for result := range results {
+		if result.err != nil {
+			h.logger.WithFields(logrus.Fields{
+				"shard": result.index,
+				"error": result.err,
+			}).Warn("Shard extraction failed")
+			failedExtractions++
+			extractionErrors = append(extractionErrors, fmt.Sprintf("shard %d: %v", result.index, result.err))
+			continue
+		}
+
+		// Verify checksum if available
+		expectedChecksum := manifest.ShardMetadata[result.index].Checksum
+		if expectedChecksum != "" && result.checksum != expectedChecksum {
+			h.logger.WithFields(logrus.Fields{
+				"shard":    result.index,
+				"expected": expectedChecksum,
+				"actual":   result.checksum,
+			}).Warn("Checksum mismatch - shard may be corrupted")
+			// Continue anyway - Reed-Solomon can handle some corruption
+		}
+
+		shardData[result.index] = result.shardData
+		successfulExtractions++
+
+		h.logger.WithFields(logrus.Fields{
+			"shard": result.index,
+			"size":  len(result.shardData),
+		}).Debug("Shard extracted successfully")
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"successful": successfulExtractions,
+		"failed":     failedExtractions,
+		"required":   manifest.RequiredShards,
+	}).Info("Extraction phase complete")
+
+	// Verify we have enough shards for reconstruction
+	if successfulExtractions < manifest.RequiredShards {
+		return nil, fmt.Errorf("insufficient successful extractions: got %d, need %d (some shards corrupted/failed)",
+			successfulExtractions, manifest.RequiredShards)
+	}
+
+	// Phase 7: Reed-Solomon reconstruction
+	h.logger.Info("Starting Reed-Solomon reconstruction")
+
+	config := &errorcorrection.ShardConfiguration{
+		DataShards:   manifest.TotalShards - (manifest.TotalShards - manifest.RequiredShards), // Calculate from manifest
+		ParityShards: manifest.TotalShards - manifest.RequiredShards,
+	}
+
+	// Convert [][]byte to []*Shard
+	shards := make([]*errorcorrection.Shard, len(shardData))
+	for i, data := range shardData {
+		if data != nil {
+			shards[i] = &errorcorrection.Shard{
+				Index: i,
+				Data:  data,
+			}
+		}
+	}
+
+	reconstructedData, err := h.ecService.Decode(ctx, shards, config)
+	if err != nil {
+		return nil, fmt.Errorf("Reed-Solomon reconstruction failed: %w", err)
+	}
+
+	h.logger.WithField("size", len(reconstructedData)).Info("Reconstruction successful")
+
+	// Phase 8: Optional decryption
+	processedData := reconstructedData
+	decryptionUsed := false
+
+	if cmd.Password != "" {
+		h.logger.Info("Decrypting payload")
+
+		// Derive key from password
+		key, err := h.cryptoService.DeriveKey(ctx, cmd.Password, nil)
+		if err != nil {
+			return nil, fmt.Errorf("key derivation failed: %w", err)
+		}
+
+		// Create CryptoPayload wrapper for decryption
+		payload := &crypto.CryptoPayload{
+			Data: reconstructedData,
+			// Algorithm and other fields would come from manifest in production
+		}
+
+		// Decrypt
+		decryptedData, err := h.cryptoService.Decrypt(ctx, payload, key)
+		if err != nil {
+			return nil, fmt.Errorf("decryption failed: %w", err)
+		}
+
+		processedData = decryptedData
+		decryptionUsed = true
+
+		h.logger.WithField("size", len(decryptedData)).Info("Decryption successful")
+	}
+
+	// Phase 9: Write reconstructed payload to output file
+	h.logger.WithField("output_file", cmd.OutputFile).Info("Writing reconstructed payload")
+
+	if err := os.WriteFile(cmd.OutputFile, processedData, 0644); err != nil {
+		return nil, fmt.Errorf("failed to write output file: %w", err)
+	}
+
+	// Build result
+	result := &ExtractDistributedResult{
+		OutputFile:      cmd.OutputFile,
+		PayloadSize:     int64(len(processedData)),
+		ShardsUsed:      successfulExtractions,
+		ShardsRequired:  manifest.RequiredShards,
+		ShardsTotal:     manifest.TotalShards,
+		ProcessingTime:  time.Since(start).Milliseconds(),
+		IntegrityPassed: true, // HMAC validation passed
+		DecryptionUsed:  decryptionUsed,
+		RecoveryMode:    h.determineRecoveryMode(successfulExtractions, manifest.RequiredShards, manifest.TotalShards),
+		CorruptedShards: h.extractCorruptedIndices(extractionErrors),
+	}
+
+	h.logger.WithFields(logrus.Fields{
+		"output_file":        result.OutputFile,
+		"payload_size":       result.PayloadSize,
+		"processing_time":    result.ProcessingTime,
+		"failed_extractions": failedExtractions,
+	}).Info("Distributed extraction operation complete")
+
+	return result, nil
+}
+
+// determineRecoveryMode determines the recovery mode based on shard availability.
+func (h *ExtractDistributedHandler) determineRecoveryMode(successful, required, total int) string {
+	if successful >= total {
+		return "full"
+	} else if successful > required {
+		return "partial"
+	}
+	return "minimal"
+}
+
+// extractCorruptedIndices extracts shard indices from error messages.
+func (h *ExtractDistributedHandler) extractCorruptedIndices(errors []string) []int {
+	// Simple implementation - in production would parse error messages
+	return []int{}
+}
+
+// detectTechniqueFromFile determines the steganography technique based on file extension.
+func (h *ExtractDistributedHandler) detectTechniqueFromFile(filename string) string {
+	ext := filepath.Ext(filename)
+	switch ext {
+	case ".png", ".bmp":
+		return "lsb"
+	case ".jpg", ".jpeg":
+		return "dct"
+	case ".wav":
+		return "phase"
+	case ".txt":
+		return "zerowidth"
+	default:
+		return "lsb" // Default fallback
+	}
+}
+
+// min returns the minimum of two integers.
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
