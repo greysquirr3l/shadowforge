@@ -175,9 +175,11 @@ type ArchiveEntry struct {
 	Size           int64
 	CompressedSize int64
 	Checksum       string
-	Permissions    EntryPermissions
+	Permissions    uint32
 	ModifiedAt     time.Time
+	ModTime        time.Time // Alias for ModifiedAt (compatibility)
 	ExtractedAt    *time.Time
+	Content        []byte // File content (for in-memory operations)
 }
 
 // NewArchiveEntry creates a new ArchiveEntry with validation.
@@ -205,7 +207,7 @@ func NewArchiveEntry(archiveID ArchiveID, name, path string, mediaType MediaType
 		Path:        path,
 		MediaType:   mediaType,
 		Size:        size,
-		Permissions: EntryPermissions{Mode: 0644},
+		Permissions: 0644,
 		ModifiedAt:  time.Now(),
 	}
 
