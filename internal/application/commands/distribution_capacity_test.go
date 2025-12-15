@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -73,6 +74,7 @@ func TestCapacityPlanner_AnalyzeCapacity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			context.TODO()
 			analysis, err := planner.AnalyzeCapacity(nil, tt.payloadSizes, tt.coverCapacities, tt.rsRedundancy)
 
 			require.NoError(t, err, tt.description)

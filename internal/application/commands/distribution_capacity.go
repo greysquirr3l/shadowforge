@@ -254,7 +254,7 @@ func (cp *CapacityPlanner) CalculateDistributionFeasibility(
 		}
 		totalRequired := avgPayloadSize * int64(payloadCount) * 13 / 10
 		if totalCap < totalRequired {
-			return false, fmt.Sprintf("insufficient total capacity")
+			return false, "insufficient total capacity"
 		}
 		return true, "feasible"
 
@@ -307,9 +307,8 @@ func (cp *CapacityPlanner) PredictUtilization(
 		// Assume roughly even with variance
 		avgPerCover := float64(totalRequired) / float64(len(coverCapacities))
 		for _, cover := range coverCapacities {
-			// Random varies ±20%
-			variance := avgPerCover * 0.2
-			allocated := avgPerCover + (variance * (0.5 - 0.5)) // Simplified
+			// Random varies ±20% (simplified: using average for predictability)
+			allocated := avgPerCover
 			if cover.Capacity > 0 {
 				utilization[cover.Path] = (allocated / float64(cover.Capacity)) * 100
 			}
