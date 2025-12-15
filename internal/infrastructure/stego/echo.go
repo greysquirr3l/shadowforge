@@ -7,10 +7,11 @@ package stego
 import (
 	"context"
 	"fmt"
-	"github.com/sirupsen/logrus"
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
+	mediaInfra "github.com/greysquirr3l/shadowforge/internal/infrastructure/media"
+	"github.com/sirupsen/logrus"
 )
 
 // EchoEmbeddingConfig configures echo hiding parameters.
@@ -77,15 +78,6 @@ func (e *EchoTechnique) SupportsFormat(format media.MediaFormat) bool {
 
 // Embed hides payload data within audio using echo hiding.
 func (e *EchoTechnique) Embed(ctx context.Context, carrier, payload []byte) ([]byte, error) {
-	// TODO: Implement echo hiding
-	// This is a simplified placeholder implementation
-	// Full implementation would:
-	// 1. Parse WAV file to get audio samples
-	// 2. Convert payload to bits
-	// 3. Divide audio into segments
-	// 4. For each segment and bit: add echo with appropriate delay
-	// 5. Reconstruct audio with embedded echoes
-
 	e.logger.WithFields(logrus.Fields{
 		"carrier_size": len(carrier),
 		"payload_size": len(payload),
@@ -95,18 +87,86 @@ func (e *EchoTechnique) Embed(ctx context.Context, carrier, payload []byte) ([]b
 		return nil, stego.ErrEmptyPayload
 	}
 
-	// For now, return a modified carrier with embedded payload
-	// This allows tests to pass while full implementation is developed
-	result := make([]byte, len(carrier)+len(payload))
-	copy(result, carrier)
+	// Load WAV file
+	audioProc := mediaInfra.NewAudioProcessor()
+	pcmData, err := audioProc.LoadWAV(carrier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load WAV: %w", err)
+	}
 
-	// Simple embedding: append payload with a marker
-	copy(result[len(carrier):], payload)
+	// Convert payload to bits (with 32-bit length header)
+	payloadLen := uint32(len(payload))
+	lengthBits := make([]bool, 32)
+	for i := 0; i < 32; i++ {
+		lengthBits[i] = (payloadLen>>(31-i))&1 == 1
+	}
+
+	payloadBits := e.payloadToBits(payload)
+	allBits := append(lengthBits, payloadBits...)
+
+	// Work with first channel
+	samples := pcmData.Samples[0]
+
+	// Check capacity
+	maxSegments := len(samples) / e.config.SegmentLen
+	if maxSegments < len(allBits) {
+		return nil, stego.ErrInsufficientCapacity
+	}
+
+	// Segment audio
+	segments := e.segmentAudio(samples, e.config.SegmentLen)
+
+	// Process each segment and embed one bit per segment
+	bitIndex := 0
+	for i := 0; i < len(segments) && bitIndex < len(allBits); i++ {
+		segment := segments[i]
+
+		// Convert int32 to float64 for processing
+		floatSegment := make([]float64, len(segment))
+		for j, s := range segment {
+			floatSegment[j] = float64(s) / 32768.0
+		}
+
+		// Add echo based on bit value
+		var delay int
+		if allBits[bitIndex] {
+			delay = e.config.Delay1
+		} else {
+			delay = e.config.Delay0
+		}
+
+		modifiedSegment := e.addEcho(floatSegment, delay, e.config.Amplitude, e.config.MixRatio)
+
+		// Convert back to int32 and write to samples
+		for j := 0; j < len(modifiedSegment) && i*e.config.SegmentLen+j < len(samples); j++ {
+			value := modifiedSegment[j] * 32768.0
+			if value > 32767 {
+				value = 32767
+			} else if value < -32768 {
+				value = -32768
+			}
+			samples[i*e.config.SegmentLen+j] = int32(value)
+		}
+
+		bitIndex++
+	}
+
+	if bitIndex < len(allBits) {
+		return nil, stego.ErrInsufficientCapacity
+	}
+
+	// Reconstruct WAV
+	pcmData.Samples[0] = samples
+	result, err := audioProc.SaveWAV(pcmData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save WAV: %w", err)
+	}
 
 	e.logger.WithFields(logrus.Fields{
-		"result_size": len(result),
-		"delay0": e.config.Delay0,
-		"delay1": e.config.Delay1,
+		"result_size":   len(result),
+		"bits_embedded": bitIndex,
+		"delay0":        e.config.Delay0,
+		"delay1":        e.config.Delay1,
 	}).Info("Echo embedding completed")
 
 	return result, nil
@@ -114,37 +174,90 @@ func (e *EchoTechnique) Embed(ctx context.Context, carrier, payload []byte) ([]b
 
 // Extract retrieves hidden data from audio using echo detection.
 func (e *EchoTechnique) Extract(ctx context.Context, carrier []byte) ([]byte, error) {
-	// TODO: Implement echo detection
-	// This is a simplified placeholder implementation
-	// Full implementation would:
-	// 1. Parse audio segments
-	// 2. Detect echo delays using autocorrelation
-	// 3. Classify delays as bit 0 or bit 1
-	// 4. Reconstruct payload from detected bits
-
 	e.logger.WithFields(logrus.Fields{
 		"carrier_size": len(carrier),
 	}).Info("Echo extraction started")
 
-	// For now, extract data from the end of the carrier
-	// This matches our simplified embedding strategy
-	if len(carrier) <= e.config.SegmentLen {
-		return nil, stego.ErrInsufficientCapacity
+	if len(carrier) == 0 {
+		return nil, stego.ErrEmptyCoverMedia
 	}
 
-	// Extract the "payload" from the end of the carrier (from our simplified embed)
-	headerSize := len(carrier) - (len(carrier) / 10) // Extract ~10% as payload
-	if headerSize < 0 {
-		headerSize = 0
+	// Load WAV file
+	audioProc := mediaInfra.NewAudioProcessor()
+	pcmData, err := audioProc.LoadWAV(carrier)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load WAV: %w", err)
 	}
 
-	result := carrier[headerSize:]
+	// Get first channel
+	samples := pcmData.Samples[0]
+
+	// Segment audio
+	segments := e.segmentAudio(samples, e.config.SegmentLen)
+
+	// Extract bits from each segment
+	var extractedBits []bool
+	for _, segment := range segments {
+		// Convert int32 to float64
+		floatSegment := make([]float64, len(segment))
+		for j, s := range segment {
+			floatSegment[j] = float64(s) / 32768.0
+		}
+
+		// Detect echo delay
+		delay, err := e.detectEcho(floatSegment)
+		if err != nil {
+			// If detection fails, assume bit 0
+			extractedBits = append(extractedBits, false)
+			continue
+		}
+
+		// Classify delay as bit 0 or bit 1
+		// Delay closer to Delay0 → bit 0
+		// Delay closer to Delay1 → bit 1
+		diff0 := absInt(delay - e.config.Delay0)
+		diff1 := absInt(delay - e.config.Delay1)
+
+		bit := diff1 < diff0
+		extractedBits = append(extractedBits, bit)
+	}
+
+	// First 32 bits are payload length
+	if len(extractedBits) < 32 {
+		return nil, stego.ErrCorruptedContainer
+	}
+
+	var payloadLen uint32
+	for i := 0; i < 32; i++ {
+		if extractedBits[i] {
+			payloadLen |= 1 << (31 - i)
+		}
+	}
+
+	// Extract payload bits
+	totalBits := 32 + int(payloadLen)*8
+	if len(extractedBits) < totalBits {
+		return nil, stego.ErrCorruptedContainer
+	}
+
+	payloadBits := extractedBits[32:totalBits]
+	payload := e.bitsToPayload(payloadBits)
 
 	e.logger.WithFields(logrus.Fields{
-		"extracted_size": len(result),
+		"extracted_size": len(payload),
+		"total_bits":     len(extractedBits),
+		"payload_length": payloadLen,
 	}).Info("Echo extraction completed")
 
-	return result, nil
+	return payload, nil
+}
+
+// Helper function for absolute value of integers
+func absInt(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // CalculateCapacity determines embedding capacity for echo hiding.
@@ -166,9 +279,9 @@ func (e *EchoTechnique) CalculateCapacity(ctx context.Context, carrier []byte) (
 	capacityBytes := capacityBits / 8
 
 	e.logger.WithFields(logrus.Fields{
-		"carrier_bytes": len(carrier),
-		"num_segments": numSegments,
-		"capacity_bits": capacityBits,
+		"carrier_bytes":  len(carrier),
+		"num_segments":   numSegments,
+		"capacity_bits":  capacityBits,
 		"capacity_bytes": capacityBytes,
 	}).Debug("Calculated echo embedding capacity")
 
@@ -177,13 +290,10 @@ func (e *EchoTechnique) CalculateCapacity(ctx context.Context, carrier []byte) (
 
 // Private helper functions for full implementation
 
-// addEcho adds echo to audio samples based on bit value.
-func (e *EchoTechnique) addEcho(samples []float64, bit byte) []float64 {
-	var delay int
-	if bit == 0 {
-		delay = e.config.Delay0
-	} else {
-		delay = e.config.Delay1
+// addEcho adds echo to audio samples based on delay value.
+func (e *EchoTechnique) addEcho(samples []float64, delay int, amplitude float64, mixRatio float64) []float64 {
+	if delay >= len(samples) {
+		return samples
 	}
 
 	result := make([]float64, len(samples))
@@ -191,27 +301,24 @@ func (e *EchoTechnique) addEcho(samples []float64, bit byte) []float64 {
 
 	// Add echo
 	for i := delay; i < len(result); i++ {
-		echoSample := samples[i-delay] * e.config.Amplitude
-		result[i] = samples[i]*e.config.MixRatio + echoSample*(1-e.config.MixRatio)
+		echoSample := samples[i-delay] * amplitude
+		result[i] = samples[i]*mixRatio + echoSample*(1-mixRatio)
 	}
 
 	return result
 }
 
 // detectEcho detects echo delays using autocorrelation.
-func (e *EchoTechnique) detectEcho(samples []float64) byte {
-	// TODO: Implement proper autocorrelation-based echo detection
-	// This is a simplified version for testing
-
+func (e *EchoTechnique) detectEcho(samples []float64) (int, error) {
 	// Look for autocorrelation peaks at expected delays
 	corr0 := e.calculateAutocorrelation(samples, e.config.Delay0)
 	corr1 := e.calculateAutocorrelation(samples, e.config.Delay1)
 
-	// Return bit based on stronger correlation
+	// Return delay with stronger correlation
 	if corr0 > corr1 {
-		return 0
+		return e.config.Delay0, nil
 	}
-	return 1
+	return e.config.Delay1, nil
 }
 
 // calculateAutocorrelation calculates autocorrelation at specific lag.
@@ -236,9 +343,8 @@ func (e *EchoTechnique) calculateAutocorrelation(samples []float64, lag int) flo
 }
 
 // segmentAudio divides audio into segments for processing.
-func (e *EchoTechnique) segmentAudio(samples []float64) [][]float64 {
-	var segments [][]float64
-	segmentLen := e.config.SegmentLen
+func (e *EchoTechnique) segmentAudio(samples []int32, segmentLen int) [][]int32 {
+	var segments [][]int32
 
 	for i := 0; i < len(samples); i += segmentLen {
 		end := i + segmentLen
@@ -246,7 +352,7 @@ func (e *EchoTechnique) segmentAudio(samples []float64) [][]float64 {
 			end = len(samples)
 		}
 
-		segment := make([]float64, end-i)
+		segment := make([]int32, end-i)
 		copy(segment, samples[i:end])
 		segments = append(segments, segment)
 	}
@@ -255,36 +361,31 @@ func (e *EchoTechnique) segmentAudio(samples []float64) [][]float64 {
 }
 
 // payloadToBits converts byte payload to individual bits.
-func (e *EchoTechnique) payloadToBits(payload []byte) []byte {
-	bits := make([]byte, len(payload)*8)
+func (e *EchoTechnique) payloadToBits(payload []byte) []bool {
+	bits := make([]bool, len(payload)*8)
 	for i, b := range payload {
 		for j := 0; j < 8; j++ {
-			bit := (b >> (7 - j)) & 1
-			bits[i*8+j] = bit
+			bits[i*8+j] = (b>>(7-j))&1 == 1
 		}
 	}
 	return bits
 }
 
 // bitsToPayload converts individual bits back to byte payload.
-func (e *EchoTechnique) bitsToPayload(bits []byte) []byte {
-	if len(bits)%8 != 0 {
-		// Pad to byte boundary
-		padding := 8 - (len(bits) % 8)
-		paddedBits := make([]byte, len(bits)+padding)
-		copy(paddedBits, bits)
-		bits = paddedBits
-	}
+func (e *EchoTechnique) bitsToPayload(bits []bool) []byte {
+	numBytes := len(bits) / 8
+	payload := make([]byte, numBytes)
 
-	payload := make([]byte, len(bits)/8)
-	for i := 0; i < len(payload); i++ {
+	for i := 0; i < numBytes; i++ {
 		var b byte
 		for j := 0; j < 8; j++ {
-			bit := bits[i*8+j]
-			b |= (bit << (7 - j))
+			if bits[i*8+j] {
+				b |= 1 << (7 - j)
+			}
 		}
 		payload[i] = b
 	}
+
 	return payload
 }
 

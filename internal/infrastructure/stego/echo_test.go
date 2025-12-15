@@ -2,8 +2,9 @@ package stego
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"testing"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -381,14 +382,14 @@ func TestEchoTechnique_HelperFunctions(t *testing.T) {
 
 	t.Run("payloadToBits", func(t *testing.T) {
 		payload := []byte{0xFF, 0x00, 0xAA} // 11111111 00000000 10101010
-		expected := []byte{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0}
+		expected := []bool{true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, true, false, true, false, true, false, true, false}
 
 		result := technique.payloadToBits(payload)
 		assert.Equal(t, expected, result)
 	})
 
 	t.Run("bitsToPayload", func(t *testing.T) {
-		bits := []byte{1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0}
+		bits := []bool{true, true, true, true, true, true, true, true, false, false, false, false, false, false, false, false, true, false, true, false, true, false, true, false}
 		expected := []byte{0xFF, 0x00, 0xAA}
 
 		result := technique.bitsToPayload(bits)
@@ -396,12 +397,12 @@ func TestEchoTechnique_HelperFunctions(t *testing.T) {
 	})
 
 	t.Run("segmentAudio", func(t *testing.T) {
-		samples := make([]float64, 20000)
+		samples := make([]int32, 20000)
 		for i := range samples {
-			samples[i] = float64(i)
+			samples[i] = int32(i)
 		}
 
-		segments := technique.segmentAudio(samples)
+		segments := technique.segmentAudio(samples, 8192)
 
 		assert.Greater(t, len(segments), 1)
 		// Should have segments of default size (8192) plus potentially a smaller final segment
