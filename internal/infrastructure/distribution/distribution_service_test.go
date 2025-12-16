@@ -9,6 +9,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	domainDist "github.com/greysquirr3l/shadowforge/internal/domain/distribution"
+	"github.com/greysquirr3l/shadowforge/internal/domain/errorcorrection"
+	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
 	infraDist "github.com/greysquirr3l/shadowforge/internal/infrastructure/distribution"
 )
@@ -79,49 +81,49 @@ func (m *MockRepository) GetManifestsByStrategy(ctx context.Context, id domainDi
 
 type MockECService struct{}
 
-func (m *MockECService) Encode(ctx context.Context, data []byte, config interface{}) (interface{}, error) {
+func (m *MockECService) Encode(ctx context.Context, data []byte, config *errorcorrection.ShardConfiguration) (*errorcorrection.ProtectedMessage, error) {
 	return nil, nil
 }
 
-func (m *MockECService) Decode(ctx context.Context, shards interface{}, config interface{}) ([]byte, error) {
+func (m *MockECService) Decode(ctx context.Context, shards []*errorcorrection.Shard, config *errorcorrection.ShardConfiguration) ([]byte, error) {
 	return nil, nil
 }
 
-func (m *MockECService) VerifyShards(ctx context.Context, shards interface{}) error {
+func (m *MockECService) VerifyShards(ctx context.Context, shards []*errorcorrection.Shard) error {
 	return nil
 }
 
-func (m *MockECService) CalculateCapacity(config interface{}, shardSize int) int {
+func (m *MockECService) CalculateCapacity(config *errorcorrection.ShardConfiguration, shardSize int) int {
 	return 0
 }
 
-func (m *MockECService) OptimizeConfiguration(ctx context.Context, dataSize int, redundancy interface{}) (interface{}, error) {
+func (m *MockECService) OptimizeConfiguration(ctx context.Context, dataSize int, redundancy errorcorrection.RedundancyLevel) (*errorcorrection.ShardConfiguration, error) {
 	return nil, nil
 }
 
 type MockMediaService struct{}
 
-func (m *MockMediaService) LoadMedia(ctx context.Context, data []byte, format interface{}) (interface{}, error) {
+func (m *MockMediaService) LoadMedia(ctx context.Context, data []byte, format media.MediaFormat) (*media.MediaAsset, error) {
 	return nil, nil
 }
 
-func (m *MockMediaService) DetectFormat(ctx context.Context, data []byte) (interface{}, error) {
+func (m *MockMediaService) DetectFormat(ctx context.Context, data []byte) (media.MediaFormat, error) {
+	return "", nil
+}
+
+func (m *MockMediaService) CalculateCapacity(ctx context.Context, asset *media.MediaAsset) (*media.CapacityInfo, error) {
 	return nil, nil
 }
 
-func (m *MockMediaService) CalculateCapacity(ctx context.Context, asset interface{}) (interface{}, error) {
-	return nil, nil
-}
-
-func (m *MockMediaService) SanitizeMetadata(ctx context.Context, asset interface{}) error {
+func (m *MockMediaService) SanitizeMetadata(ctx context.Context, asset *media.MediaAsset) error {
 	return nil
 }
 
-func (m *MockMediaService) ValidateMedia(ctx context.Context, asset interface{}) error {
+func (m *MockMediaService) ValidateMedia(ctx context.Context, asset *media.MediaAsset) error {
 	return nil
 }
 
-func (m *MockMediaService) AnalyzeQuality(ctx context.Context, asset interface{}) (float64, error) {
+func (m *MockMediaService) AnalyzeQuality(ctx context.Context, asset *media.MediaAsset) (float64, error) {
 	return 0, nil
 }
 
@@ -133,16 +135,24 @@ func (m *MockStegoService) CalculateCapacity(ctx context.Context, media []byte, 
 	return capacity, nil
 }
 
-func (m *MockStegoService) Embed(ctx context.Context, payload []byte, cover []byte, technique stego.StegoTechnique) ([]byte, error) {
+func (m *MockStegoService) Embed(ctx context.Context, cover []byte, payload []byte, technique stego.StegoTechnique) (*stego.StegoContainer, error) {
 	return nil, nil
 }
 
-func (m *MockStegoService) Extract(ctx context.Context, stego []byte, technique stego.StegoTechnique) ([]byte, error) {
+func (m *MockStegoService) Extract(ctx context.Context, stegoMedia []byte, technique stego.StegoTechnique) ([]byte, error) {
 	return nil, nil
 }
 
-func (m *MockStegoService) AnalyzeQuality(ctx context.Context, stego []byte) (interface{}, error) {
+func (m *MockStegoService) AnalyzeQuality(ctx context.Context, stegoMedia []byte) (*stego.Quality, error) {
 	return nil, nil
+}
+
+func (m *MockStegoService) ValidateContainer(ctx context.Context, container *stego.StegoContainer) error {
+	return nil
+}
+
+func (m *MockStegoService) OptimizeTechnique(ctx context.Context, coverMedia []byte, payloadSize int64) (stego.StegoTechnique, error) {
+	return stego.LSB, nil
 }
 
 func TestCalculateOptimalSharding(t *testing.T) {
