@@ -3,10 +3,19 @@ package commands
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"image"
+	_ "image/jpeg" // Register JPEG decoder
+	"image/png"
+	_ "image/png" // Register PNG decoder
+	"math"
+	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -592,7 +601,68 @@ Supported media types:
 	scanDirCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 	scanDirCmd.MarkFlagRequired("dir")
 
-	return []*cobra.Command{keygenCmd, formatsCmd, scanDirCmd}, nil
+	// Generate covers command
+	generateCmd := &cobra.Command{
+		Use:   "generate-covers",
+		Short: "Generate AI cover images for steganography",
+		Long: `Generate AI-powered cover images suitable for steganographic embedding.
+
+Uses Pollinations.ai (free, no API key required) to create diverse, high-quality
+images optimized for maximum embedding capacity.
+
+IMPORTANT: The AI service returns 768x768 images which provide approximately
+400-500 KB of safe embedding capacity each. To reach larger total capacities,
+generate multiple images (e.g., 25 images ≈ 10 MB total capacity).
+
+Features:
+  • Free AI image generation (no API key required)
+  • Uncompressed PNG encoding for maximum capacity
+  • Diverse themes and styles for operational security
+  • Automatic capacity validation
+  • Optional filename obfuscation
+  • Preset configurations for quick start
+
+Examples:
+  # Generate default set (25 images for ~10 MB total capacity)
+  shadowforge generate-covers
+
+  # Generate 50 images for ~20 MB capacity
+  shadowforge generate-covers --count 50
+
+  # Use preset configurations
+  shadowforge generate-covers --preset starter-pack   # 15 images (~6 MB)
+  shadowforge generate-covers --preset high-capacity  # 50 images (~20 MB)
+  shadowforge generate-covers --preset stealth        # 30 diverse images (~12 MB)
+
+  # Custom themes and output directory
+  shadowforge generate-covers --themes "nature,ocean,mountains" --output my-covers
+
+  # After generation, analyze capacity
+  shadowforge scan-directory --dir covers
+
+Presets:
+  starter-pack   - 15 images (~6 MB capacity) for quick evaluation
+  high-capacity  - 50 images (~20 MB capacity) for large payloads
+  stealth        - 30 highly diverse images for maximum obfuscation
+
+Note: Pollinations.ai returns 768x768 images. The tool automatically re-encodes
+them as uncompressed PNGs to maximize embedding capacity (~400-500 KB each).`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleGenerateCoversCommand(cmd, args, logger)
+		},
+	}
+
+	// Add flags for generate-covers
+	generateCmd.Flags().IntP("count", "c", 25, "Number of images to generate (each ~400-500 KB capacity)")
+	generateCmd.Flags().String("capacity", "10MB", "Target total capacity (e.g., 10MB, 5GB)")
+	generateCmd.Flags().String("size", "", "Image dimensions (e.g., 4000x4000) - Note: API returns 768x768 regardless")
+	generateCmd.Flags().StringP("output", "o", "covers", "Output directory for generated images")
+	generateCmd.Flags().StringSlice("themes", []string{}, "Comma-separated themes (e.g., nature,abstract,urban)")
+	generateCmd.Flags().String("preset", "", "Use preset configuration (starter-pack, high-capacity, stealth)")
+	generateCmd.Flags().Bool("obfuscate", true, "Obfuscate filenames with random hex suffixes")
+	generateCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+
+	return []*cobra.Command{keygenCmd, formatsCmd, scanDirCmd, generateCmd}, nil
 }
 
 // outputEmbedResult displays embed operation results in human-readable format.
@@ -1012,4 +1082,412 @@ func getLargestSafeCapacity(files []MediaFileInfo) int64 {
 		}
 	}
 	return largest
+}
+
+// handleGenerateCoversCommand generates AI cover images suitable for steganography
+func handleGenerateCoversCommand(cmd *cobra.Command, args []string, logger *logrus.Logger) error {
+	// Parse flags
+	count, _ := cmd.Flags().GetInt("count")
+	capacityStr, _ := cmd.Flags().GetString("capacity")
+	sizeStr, _ := cmd.Flags().GetString("size")
+	outputDir, _ := cmd.Flags().GetString("output")
+	themes, _ := cmd.Flags().GetStringSlice("themes")
+	preset, _ := cmd.Flags().GetString("preset")
+	obfuscate, _ := cmd.Flags().GetBool("obfuscate")
+	verbose, _ := cmd.Flags().GetBool("verbose")
+
+	// Apply presets
+	if preset != "" {
+		count, themes = applyPreset(preset, count, themes)
+	}
+
+	// Parse target capacity
+	targetCapacity, err := parseCapacity(capacityStr)
+	if err != nil {
+		return fmt.Errorf("invalid capacity format: %w", err)
+	}
+
+	// Calculate image dimensions if not specified
+	var width, height int
+	if sizeStr == "" {
+		width, height = calculateDimensionsForCapacity(targetCapacity)
+		if verbose {
+			logger.WithFields(logrus.Fields{
+				"target_capacity": formatBytes(targetCapacity),
+				"dimensions":      fmt.Sprintf("%dx%d", width, height),
+			}).Info("Auto-calculated image dimensions")
+		}
+	} else {
+		width, height, err = parseDimensions(sizeStr)
+		if err != nil {
+			return fmt.Errorf("invalid size format: %w", err)
+		}
+	}
+
+	// Create output directory
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// Generate default themes if not specified
+	if len(themes) == 0 {
+		themes = getDefaultThemes()
+	}
+
+	fmt.Printf("🎨 Generating %d AI Cover Images\n", count)
+	fmt.Printf("   Target capacity: %s per image\n", formatBytes(targetCapacity))
+	fmt.Printf("   Requested dimensions: %dx%d pixels\n", width, height)
+	fmt.Printf("   Output directory: %s\n", outputDir)
+	fmt.Printf("   Themes: %s\n", strings.Join(themes, ", "))
+	fmt.Printf("   ⚠️  Note: Pollinations.ai may return different dimensions than requested\n")
+	fmt.Println()
+
+	// Generate images
+	var successful int
+	var totalCapacity int64
+	var generatedFiles []MediaFileInfo
+
+	for i := 0; i < count; i++ {
+		// Select theme (rotate through available themes)
+		theme := themes[i%len(themes)]
+
+		// Generate prompt
+		prompt := generatePrompt(theme)
+
+		// Generate filename
+		filename := generateFilename(theme, i, obfuscate)
+		filePath := filepath.Join(outputDir, filename)
+
+		fmt.Printf("   [%d/%d] Generating '%s' image...", i+1, count, theme)
+
+		// Download image from Pollinations.ai
+		err := downloadImage(prompt, width, height, filePath, logger)
+		if err != nil {
+			fmt.Printf(" ❌ Failed: %v\n", err)
+			if verbose {
+				logger.WithError(err).Error("Failed to generate image")
+			}
+			continue
+		}
+
+		// Validate capacity
+		fileInfo, err := analyzeGeneratedImage(filePath, verbose, logger)
+		if err != nil {
+			fmt.Printf(" ⚠️  Generated but capacity validation failed: %v\n", err)
+			successful++
+			continue
+		}
+
+		generatedFiles = append(generatedFiles, fileInfo)
+		totalCapacity += fileInfo.SafeCapacity
+		successful++
+
+		capacityEmoji := "✅"
+		if fileInfo.SafeCapacity < targetCapacity {
+			capacityEmoji = "⚠️"
+		}
+
+		fmt.Printf(" %s (capacity: %s)\n", capacityEmoji, formatBytes(fileInfo.SafeCapacity))
+
+		// Small delay to avoid rate limiting
+		if i < count-1 {
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+
+	// Display summary
+	fmt.Println()
+	fmt.Printf("✅ Generation complete: %d/%d successful\n", successful, count)
+	if successful > 0 {
+		fmt.Printf("   Total safe capacity: %s\n", formatBytes(totalCapacity))
+		avgCapacity := totalCapacity / int64(successful)
+		fmt.Printf("   Average per image: %s\n", formatBytes(avgCapacity))
+		fmt.Printf("   Files saved to: %s\n", outputDir)
+
+		// Show recommendations
+		if totalCapacity >= 50*1024*1024 { // 50MB+
+			fmt.Println()
+			fmt.Println("💡 Next steps:")
+			fmt.Printf("   1. Verify capacity: shadowforge scan-directory --dir %s\n", outputDir)
+			fmt.Printf("   2. Embed data: shadowforge embed --input secret.txt --cover %s/[file]\n", outputDir)
+		}
+	}
+
+	return nil
+}
+
+// applyPreset applies predefined preset configurations
+// Reality: Each image provides ~400-500 KB capacity
+// starter-pack: 15 images ≈ 6-7.5 MB total
+// high-capacity: 50 images ≈ 20-25 MB total
+// stealth: 30 images ≈ 12-15 MB total
+func applyPreset(preset string, currentCount int, currentThemes []string) (int, []string) {
+	switch strings.ToLower(preset) {
+	case "starter-pack":
+		return 15, []string{"nature", "cityscape", "abstract", "ocean", "mountains", "forest", "desert", "aurora", "garden", "architecture", "sunset", "clouds", "space", "waterfall", "canyon"}
+	case "high-capacity":
+		return 50, []string{"nature", "abstract", "mountains", "ocean", "forest", "cityscape", "sunset", "desert", "garden", "architecture"}
+	case "stealth":
+		return 30, []string{"documents", "textures", "patterns", "blueprints", "charts", "diagrams", "maps", "schematics", "office", "workspace", "library", "technical"}
+	default:
+		return currentCount, currentThemes
+	}
+}
+
+// parseCapacity parses capacity strings like "10MB", "5.5MB", "1GB"
+func parseCapacity(capacityStr string) (int64, error) {
+	capacityStr = strings.ToUpper(strings.TrimSpace(capacityStr))
+
+	// Extract number and unit
+	var value float64
+	var unit string
+
+	if _, err := fmt.Sscanf(capacityStr, "%f%s", &value, &unit); err != nil {
+		return 0, fmt.Errorf("invalid format (expected: 10MB, 5.5GB, etc.)")
+	}
+
+	// Convert to bytes
+	var multiplier int64
+	switch unit {
+	case "B", "BYTES":
+		multiplier = 1
+	case "KB", "K":
+		multiplier = 1024
+	case "MB", "M":
+		multiplier = 1024 * 1024
+	case "GB", "G":
+		multiplier = 1024 * 1024 * 1024
+	default:
+		return 0, fmt.Errorf("unknown unit '%s' (use B, KB, MB, or GB)", unit)
+	}
+
+	return int64(value * float64(multiplier)), nil
+}
+
+// calculateDimensionsForCapacity calculates image dimensions needed for target capacity
+// LSB safe capacity formula: capacity = (width * height * 3) / 8
+// Solving for square images: dimension = sqrt((capacity * 8) / 3)
+func calculateDimensionsForCapacity(targetCapacity int64) (width, height int) {
+	// Calculate total pixels needed (assuming RGB, 3 bytes per pixel, 1 bit per byte for safe LSB)
+	pixelsNeeded := (targetCapacity * 8) / 3
+
+	// For square images
+	dimension := int(math.Sqrt(float64(pixelsNeeded)))
+
+	// Round up to nearest 100 for cleaner dimensions
+	dimension = ((dimension + 99) / 100) * 100
+
+	// Ensure minimum size of 1000x1000
+	if dimension < 1000 {
+		dimension = 1000
+	}
+
+	// Ensure maximum size of 8000x8000 (API limitations)
+	if dimension > 8000 {
+		dimension = 8000
+	}
+
+	return dimension, dimension
+}
+
+// parseDimensions parses dimension strings like "4000x4000", "1920x1080"
+func parseDimensions(sizeStr string) (width, height int, err error) {
+	parts := strings.Split(sizeStr, "x")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("invalid format (expected: WIDTHxHEIGHT, e.g., 4000x4000)")
+	}
+
+	width, err = strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid width: %w", err)
+	}
+
+	height, err = strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("invalid height: %w", err)
+	}
+
+	if width < 100 || height < 100 {
+		return 0, 0, fmt.Errorf("dimensions too small (minimum 100x100)")
+	}
+
+	if width > 8000 || height > 8000 {
+		return 0, 0, fmt.Errorf("dimensions too large (maximum 8000x8000)")
+	}
+
+	return width, height, nil
+}
+
+// getDefaultThemes returns a diverse set of default themes
+func getDefaultThemes() []string {
+	return []string{
+		"nature",
+		"cityscape",
+		"abstract",
+		"ocean",
+		"mountains",
+		"forest",
+		"sunset",
+		"aurora",
+		"desert",
+		"garden",
+	}
+}
+
+// generatePrompt creates a detailed prompt for image generation
+func generatePrompt(theme string) string {
+	prompts := map[string]string{
+		"nature":       "Beautiful natural landscape with trees and sky, highly detailed, photorealistic, 8k quality",
+		"cityscape":    "Modern city skyline at golden hour, architectural photography, ultra detailed, 8k",
+		"abstract":     "Abstract colorful patterns and shapes, digital art, high resolution, vibrant colors",
+		"ocean":        "Serene ocean waves and coastline, nature photography, crystal clear, 8k quality",
+		"mountains":    "Majestic mountain range with snow peaks, landscape photography, ultra detailed, 8k",
+		"forest":       "Dense forest with sunlight filtering through trees, nature photography, 8k quality",
+		"sunset":       "Dramatic sunset with colorful sky, landscape photography, highly detailed, 8k",
+		"aurora":       "Northern lights aurora borealis, night sky photography, vibrant colors, 8k quality",
+		"desert":       "Vast desert landscape with sand dunes, golden hour, nature photography, 8k",
+		"garden":       "Lush garden with colorful flowers, botanical photography, highly detailed, 8k quality",
+		"architecture": "Modern architectural design, geometric patterns, professional photography, 8k",
+		"clouds":       "Dramatic cloud formations in sky, atmospheric photography, highly detailed, 8k",
+		"space":        "Deep space nebula and stars, astronomy photography, colorful, 8k quality",
+		"waterfall":    "Powerful waterfall in natural setting, long exposure, nature photography, 8k",
+		"canyon":       "Grand canyon landscape at sunset, geological formations, 8k quality",
+		"documents":    "Professional document texture, paper background, high resolution scan",
+		"textures":     "High resolution natural texture, detailed surface, photorealistic, 8k",
+		"patterns":     "Geometric patterns and tessellations, mathematical art, high resolution",
+		"blueprints":   "Technical blueprint style design, engineering drawing, detailed schematics",
+		"charts":       "Professional data visualization, clean design, high resolution infographic",
+		"diagrams":     "Technical diagram with clean lines, professional schematic, high quality",
+		"maps":         "Detailed topographic map style, cartography, high resolution geographic data",
+		"schematics":   "Technical schematic drawing, engineering design, detailed blueprint style",
+	}
+
+	prompt, exists := prompts[theme]
+	if !exists {
+		// Fallback for unknown themes
+		prompt = fmt.Sprintf("%s, highly detailed, professional photography, 8k quality", theme)
+	}
+
+	return prompt
+}
+
+// generateFilename creates a filename with optional obfuscation
+func generateFilename(theme string, index int, obfuscate bool) string {
+	if obfuscate {
+		// Generate random hex suffix for obfuscation
+		randomBytes := make([]byte, 4)
+		rand.Read(randomBytes)
+		hexSuffix := fmt.Sprintf("%x", randomBytes)
+		return fmt.Sprintf("cover_%s_%s.png", hexSuffix, theme)
+	}
+	return fmt.Sprintf("cover_%02d_%s.png", index+1, theme)
+}
+
+// downloadImage downloads an image from Pollinations.ai
+// Note: The API may not respect exact dimension requests and often returns standard
+// sizes (768x768, 1024x1024, etc.). We try &model=flux for better quality and decode/
+// re-encode as uncompressed PNG to maximize file size and embedding capacity.
+func downloadImage(prompt string, width, height int, outputPath string, logger *logrus.Logger) error {
+	// Build Pollinations.ai URL with model parameter
+	baseURL := "https://image.pollinations.ai/prompt"
+	encodedPrompt := url.PathEscape(prompt)
+	imageURL := fmt.Sprintf("%s/%s?width=%d&height=%d&nologo=true&enhance=true&model=flux",
+		baseURL, encodedPrompt, width, height)
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: 60 * time.Second,
+	}
+
+	// Download image
+	resp, err := client.Get(imageURL)
+	if err != nil {
+		return fmt.Errorf("failed to download: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("API returned status %d", resp.StatusCode)
+	}
+
+	// Decode the downloaded image
+	img, format, err := image.Decode(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to decode image: %w", err)
+	}
+
+	// Log actual dimensions received (may differ from requested)
+	bounds := img.Bounds()
+	actualWidth := bounds.Dx()
+	actualHeight := bounds.Dy()
+	if logger.Level >= logrus.DebugLevel {
+		logger.WithFields(logrus.Fields{
+			"requested":  fmt.Sprintf("%dx%d", width, height),
+			"actual":     fmt.Sprintf("%dx%d", actualWidth, actualHeight),
+			"api_format": format,
+		}).Debug("Image downloaded")
+	}
+
+	// Create output file
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer outFile.Close()
+
+	// Encode as uncompressed PNG (no compression for maximum file size and capacity)
+	// This is critical: API returns compressed images (~100KB), but uncompressed
+	// PNG can be 3-4MB for 768x768, providing ~400-500KB of embedding capacity
+	encoder := &png.Encoder{
+		CompressionLevel: png.NoCompression,
+	}
+
+	err = encoder.Encode(outFile, img)
+	if err != nil {
+		return fmt.Errorf("failed to encode PNG: %w", err)
+	}
+
+	return nil
+}
+
+// analyzeGeneratedImage analyzes a generated image to determine its capacity
+func analyzeGeneratedImage(filePath string, verbose bool, logger *logrus.Logger) (MediaFileInfo, error) {
+	// Get file info
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return MediaFileInfo{}, fmt.Errorf("failed to stat file: %w", err)
+	}
+
+	// Determine media type and technique
+	fileExt := strings.ToLower(filepath.Ext(filePath))
+	technique, mediaType, supported := detectMediaTypeAndTechnique(fileExt)
+	if !supported {
+		return MediaFileInfo{}, fmt.Errorf("unsupported file type: %s", fileExt)
+	}
+
+	// Estimate capacity
+	maxCapacity, safeCapacity := estimateCapacity(fileInfo.Size(), technique)
+
+	info := MediaFileInfo{
+		Path:                 filePath,
+		Name:                 filepath.Base(filePath),
+		Size:                 fileInfo.Size(),
+		MediaType:            mediaType,
+		Extension:            fileExt,
+		RecommendedTechnique: technique,
+		MaxCapacity:          maxCapacity,
+		SafeCapacity:         safeCapacity,
+		QualityScore:         0.85, // Generated images are high quality
+		StealthScore:         0.90, // AI images provide good cover
+	}
+
+	if verbose {
+		logger.WithFields(logrus.Fields{
+			"file":          info.Name,
+			"size":          formatBytes(info.Size),
+			"safe_capacity": formatBytes(info.SafeCapacity),
+		}).Debug("Image analyzed")
+	}
+
+	return info, nil
 }
