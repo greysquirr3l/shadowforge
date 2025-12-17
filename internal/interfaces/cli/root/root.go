@@ -55,6 +55,9 @@ Available aliases: shadowforge, sforge`, appDesc, appName),
 		container.EmbedHandler,
 		container.ExtractHandler,
 		container.AnalyzeCapacityHandler,
+		container.ScanHandler,
+		container.SelectHandler,
+		container.SuggestHandler,
 		logger,
 	)
 
@@ -79,11 +82,17 @@ Available aliases: shadowforge, sforge`, appDesc, appName),
 		return nil, fmt.Errorf("failed to create utility commands: %w", err)
 	}
 
+	archiveCommands, err := commands.NewArchiveCommands(logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create archive commands: %w", err)
+	}
+
 	// Add all command groups
 	rootCmd.AddCommand(embedCommands...)
 	rootCmd.AddCommand(extractCommands...)
 	rootCmd.AddCommand(analyzeCommands...)
 	rootCmd.AddCommand(utilityCommands...)
+	rootCmd.AddCommand(archiveCommands...)
 
 	// Add version command
 	rootCmd.AddCommand(newVersionCommand())

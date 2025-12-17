@@ -1,3 +1,4 @@
+# Project-specific ignores
 .github/instructions/
 .github/copilot-instructions.md
 .github/copilot-instructions.md.bak
@@ -13,3 +14,157 @@ INITIAL_PROMPT.md
 test_output.txt
 .serena/
 pexels_api.txt
+docs/development/
+.venv/
+
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+build/
+_build/
+
+# Go test coverage
+*.coverprofile
+coverage.out
+coverage.html
+coverage.txt
+*.coverage
+
+# Go workspace & dependencies
+go.work
+go.work.sum
+
+# Air live reload
+tmp/
+.air.toml
+
+# Delve debugger
+__debug_bin
+
+# GoLand
+.idea/
+*.iml
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# GitHub
+.github/workflows/*.log
+
+# Editor backups
+*~
+*.swp
+*.swo
+*.bak
+*.tmp
+*.orig
+
+# Log files
+*.log
+logs/
+*.log.*
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Security & secrets
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Archive files (test artifacts)
+*.zip
+*.tar
+*.tar.gz
+*.tar.bz2
+*.7z
+!testdata/**/*.zip
+!testdata/**/*.tar
+!testdata/**/*.tar.gz
+
+# Media test files (large binaries)
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.flac
+!testdata/**/*.wav
+!testdata/**/*.mp3
+
+# Large image files (test artifacts)
+*.psd
+*.ai
+*.sketch
+!testdata/**/*.png
+!testdata/**/*.jpg
+!testdata/**/*.gif
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Performance profiling
+*.prof
+*.cpu
+*.mem
+*.trace
+pprof/
+
+# Benchmark results
+bench.txt
+benchmarks/
+
+# Compiled object files
+*.o
+*.a
+*.lib
+
+# Vendor directory (if not using Go modules)
+vendor/
+
+# Documentation build artifacts
+docs/_build/
+docs/.doctrees/
+site/
+
+examples/

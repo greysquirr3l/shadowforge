@@ -17,13 +17,19 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	yekazip "github.com/yeka/zip"
+	"golang.org/x/term"
 
 	"github.com/greysquirr3l/shadowforge/internal/application/commands"
+	"github.com/greysquirr3l/shadowforge/internal/domain/archive"
 	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
+	"github.com/greysquirr3l/shadowforge/internal/infrastructure/archive_impl"
+	"github.com/greysquirr3l/shadowforge/pkg/logger"
 )
 
 // CLI command handlers - these will be injected with actual service dependencies
@@ -31,6 +37,9 @@ type CLIHandlers struct {
 	embedHandler           *commands.EmbedHandler
 	extractHandler         *commands.ExtractHandler
 	analyzeCapacityHandler *commands.AnalyzeCapacityHandler
+	scanHandler            *commands.ScanDirectoryHandler
+	selectHandler          *commands.SelectCoversHandler
+	suggestHandler         *commands.GenerateSuggestionsHandler
 	logger                 *logrus.Logger
 }
 
@@ -40,12 +49,18 @@ func NewCLIHandlers(
 	embedHandler *commands.EmbedHandler,
 	extractHandler *commands.ExtractHandler,
 	analyzeCapacityHandler *commands.AnalyzeCapacityHandler,
+	scanHandler *commands.ScanDirectoryHandler,
+	selectHandler *commands.SelectCoversHandler,
+	suggestHandler *commands.GenerateSuggestionsHandler,
 	logger *logrus.Logger,
 ) *CLIHandlers {
 	return &CLIHandlers{
 		embedHandler:           embedHandler,
 		extractHandler:         extractHandler,
 		analyzeCapacityHandler: analyzeCapacityHandler,
+		scanHandler:            scanHandler,
+		selectHandler:          selectHandler,
+		suggestHandler:         suggestHandler,
 		logger:                 logger,
 	}
 }
@@ -1490,4 +1505,375 @@ func analyzeGeneratedImage(filePath string, verbose bool, logger *logrus.Logger)
 	}
 
 	return info, nil
+}
+
+// =============================================================================
+// Archive Commands
+// =============================================================================
+
+// NewArchiveCommands creates all archive-related commands
+func NewArchiveCommands(logger *logrus.Logger) ([]*cobra.Command, error) {
+	archiveCmd := &cobra.Command{
+		Use:   "archive",
+		Short: "Archive operations",
+		Long: `Create and manage archives of stego media files.
+
+Supports multiple formats:
+  • ZIP (with optional password protection)
+  • TAR (uncompressed)
+  • TAR.GZ (gzip compressed)
+
+Examples:
+  # Create ZIP archive of stego files
+  shadowforge archive create -i stego1.png,stego2.png,stego3.png -o stegos.zip
+
+  # Create password-protected ZIP archive
+  shadowforge archive create -i stego*.png -o secure.zip --encrypt
+
+  # Create compressed TAR.GZ archive
+  shadowforge archive create -i ./stego-files -o archive.tar.gz -f tar.gz -c best
+
+  # Create archive from directory
+  shadowforge archive create --input-dir ./stego-output -o results.zip`,
+	}
+
+	createCmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create an archive of stego files",
+		Long: `Create an archive containing steganographic media files.
+
+Compression Levels:
+  • none     - No compression (fastest)
+  • fastest  - Fastest compression
+  • default  - Balanced compression (recommended)
+  • best     - Maximum compression (slowest)
+
+Examples:
+  # Create ZIP archive
+  shadowforge archive create -i file1.png,file2.png -o archive.zip
+
+  # Create password-protected ZIP
+  shadowforge archive create -i *.png -o secure.zip -p mypassword
+
+  # Create TAR.GZ with best compression
+  shadowforge archive create -i ./files -o archive.tar.gz -f tar.gz -c best`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleArchiveCreateCommand(cmd, args, logger)
+		},
+	}
+
+	// Add flags
+	createCmd.Flags().StringP("input", "i", "", "Input files (comma-separated) or glob pattern")
+	createCmd.Flags().String("input-dir", "", "Input directory to archive")
+	createCmd.Flags().StringP("output", "o", "", "Output archive file (required)")
+	createCmd.Flags().StringP("format", "f", "zip", "Archive format (zip, tar, tar.gz)")
+	createCmd.Flags().StringP("compression", "c", "default", "Compression level (none, fastest, default, best)")
+	createCmd.Flags().StringP("password", "p", "", "Password for encryption (ZIP only)")
+	createCmd.Flags().Bool("encrypt", false, "Enable encryption (will prompt for password if not provided)")
+	createCmd.Flags().BoolP("verbose", "v", false, "Verbose output")
+
+	// Mark required flags
+	createCmd.MarkFlagRequired("output")
+
+	archiveCmd.AddCommand(createCmd)
+	return []*cobra.Command{archiveCmd}, nil
+}
+
+// handleArchiveCreateCommand handles the archive create command
+func handleArchiveCreateCommand(cmd *cobra.Command, args []string, logger *logrus.Logger) error {
+	// Get flags
+	inputFiles, _ := cmd.Flags().GetString("input")
+	inputDir, _ := cmd.Flags().GetString("input-dir")
+	outputPath, _ := cmd.Flags().GetString("output")
+	formatStr, _ := cmd.Flags().GetString("format")
+	compressionStr, _ := cmd.Flags().GetString("compression")
+	password, _ := cmd.Flags().GetString("password")
+	encrypt, _ := cmd.Flags().GetBool("encrypt")
+	verbose, _ := cmd.Flags().GetBool("verbose")
+
+	// Validate inputs
+	if inputFiles == "" && inputDir == "" {
+		return fmt.Errorf("either --input or --input-dir must be specified")
+	}
+
+	if inputFiles != "" && inputDir != "" {
+		return fmt.Errorf("cannot specify both --input and --input-dir")
+	}
+
+	// Parse format
+	var format archive.ArchiveFormat
+	switch strings.ToLower(formatStr) {
+	case "zip":
+		format = archive.FormatZIP
+	case "tar":
+		format = archive.FormatTAR
+	case "tar.gz", "targz", "tgz":
+		format = archive.FormatTARGZ
+	default:
+		return fmt.Errorf("unsupported format: %s (supported: zip, tar, tar.gz)", formatStr)
+	}
+
+	// Parse compression level
+	var compressionLevel archive.CompressionLevel
+	switch strings.ToLower(compressionStr) {
+	case "none":
+		compressionLevel = archive.CompressionNone
+	case "fastest":
+		compressionLevel = archive.CompressionFastest
+	case "default":
+		compressionLevel = archive.CompressionDefault
+	case "best":
+		compressionLevel = archive.CompressionBest
+	default:
+		return fmt.Errorf("invalid compression level: %s (supported: none, fastest, default, best)", compressionStr)
+	}
+
+	// Handle password/encryption - force ZIP format if encryption is enabled
+	if encrypt || password != "" {
+		if formatStr != "zip" && formatStr != "" {
+			logger.WithField("requested_format", formatStr).
+				WithField("forced_format", "zip").
+				Warn("Encryption requires ZIP format, overriding format selection")
+		}
+		format = archive.FormatZIP
+		formatStr = "zip"
+	}
+
+	if encrypt && password == "" {
+		// Prompt for password securely
+		var err error
+		password, err = promptForPassword("Enter archive password: ")
+		if err != nil {
+			return fmt.Errorf("failed to read password: %w", err)
+		}
+
+		confirmPassword, err := promptForPassword("Confirm password: ")
+		if err != nil {
+			return fmt.Errorf("failed to read password confirmation: %w", err)
+		}
+
+		if password != confirmPassword {
+			return fmt.Errorf("passwords do not match")
+		}
+	}
+
+	// Collect files
+	var filePaths []string
+	if inputFiles != "" {
+		// Handle glob patterns and comma-separated lists
+		for _, pattern := range strings.Split(inputFiles, ",") {
+			pattern = strings.TrimSpace(pattern)
+			matches, err := filepath.Glob(pattern)
+			if err != nil {
+				return fmt.Errorf("invalid glob pattern %s: %w", pattern, err)
+			}
+			if len(matches) == 0 {
+				// Not a glob, treat as literal file
+				filePaths = append(filePaths, pattern)
+			} else {
+				filePaths = append(filePaths, matches...)
+			}
+		}
+	} else {
+		// Collect files from directory
+		err := filepath.Walk(inputDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			if !info.IsDir() {
+				filePaths = append(filePaths, path)
+			}
+			return nil
+		})
+		if err != nil {
+			return fmt.Errorf("failed to walk directory: %w", err)
+		}
+	}
+
+	if len(filePaths) == 0 {
+		return fmt.Errorf("no files found to archive")
+	}
+
+	logger.WithFields(logrus.Fields{
+		"file_count":  len(filePaths),
+		"format":      format.String(),
+		"compression": compressionLevel.String(),
+		"encrypted":   password != "",
+	}).Info("Creating archive")
+
+	// Create archive entity
+	archiveEntity, err := archive.NewArchive(format, compressionLevel)
+	if err != nil {
+		return fmt.Errorf("failed to create archive entity: %w", err)
+	}
+
+	// Add files to archive
+	for _, filePath := range filePaths {
+		// Read file content
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			logger.WithError(err).WithField("file", filePath).Warn("Failed to read file, skipping")
+			continue
+		}
+
+		// Get file info
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			logger.WithError(err).WithField("file", filePath).Warn("Failed to stat file, skipping")
+			continue
+		}
+
+		// Create archive entry
+		relativePath := filepath.Base(filePath)
+		if inputDir != "" {
+			// Use relative path from input directory
+			rel, err := filepath.Rel(inputDir, filePath)
+			if err == nil {
+				relativePath = rel
+			}
+		}
+
+		entry, err := archive.NewArchiveEntry(
+			archiveEntity.ID,
+			relativePath,
+			relativePath,
+			archive.DetectMediaType(relativePath),
+			int64(len(content)),
+		)
+		if err != nil {
+			logger.WithError(err).WithField("file", relativePath).Warn("Failed to create entry, skipping")
+			continue
+		}
+
+		entry.Content = content
+		entry.ModifiedAt = fileInfo.ModTime()
+		entry.ModTime = fileInfo.ModTime()
+
+		if err := archiveEntity.AddEntry(entry); err != nil {
+			logger.WithError(err).WithField("file", relativePath).Warn("Failed to add entry, skipping")
+			continue
+		}
+
+		if verbose {
+			logger.WithFields(logrus.Fields{
+				"file": relativePath,
+				"size": formatBytes(int64(len(content))),
+			}).Debug("Added file to archive")
+		}
+	}
+
+	if archiveEntity.EntryCount == 0 {
+		return fmt.Errorf("no files were successfully added to archive")
+	}
+
+	// Create archive based on format
+	var archiveErr error
+	switch format {
+	case archive.FormatZIP:
+		handler := archive_impl.NewZIPHandler()
+		if password != "" {
+			// Create password-protected ZIP
+			archiveErr = createPasswordProtectedZIP(archiveEntity, outputPath, password)
+		} else {
+			archiveErr = handler.Create(archiveEntity, outputPath)
+		}
+
+	case archive.FormatTAR, archive.FormatTARGZ:
+		handler := archive_impl.NewTARHandler()
+		archiveErr = handler.Create(archiveEntity, outputPath)
+
+	default:
+		return fmt.Errorf("unsupported format: %s", format)
+	}
+
+	if archiveErr != nil {
+		return fmt.Errorf("failed to create archive: %w", archiveErr)
+	}
+
+	// Get final archive size
+	archiveInfo, err := os.Stat(outputPath)
+	if err != nil {
+		logger.WithError(err).Warn("Failed to stat output archive")
+	}
+
+	// Print success message
+	fmt.Printf("\n✅ Archive created successfully!\n")
+	fmt.Printf("Output: %s\n", outputPath)
+	fmt.Printf("Format: %s\n", format.String())
+	fmt.Printf("Files: %d\n", archiveEntity.EntryCount)
+	fmt.Printf("Total Size: %s\n", formatBytes(archiveEntity.TotalSize))
+	if archiveInfo != nil {
+		fmt.Printf("Archive Size: %s\n", formatBytes(archiveInfo.Size()))
+		if archiveEntity.TotalSize > 0 {
+			ratio := float64(archiveInfo.Size()) / float64(archiveEntity.TotalSize) * 100
+			fmt.Printf("Compression: %.1f%%\n", ratio)
+		}
+	}
+	if password != "" {
+		fmt.Printf("Encrypted: Yes ✓\n")
+	}
+
+	return nil
+}
+
+// promptForPassword prompts the user for a password securely (no echo)
+func promptForPassword(prompt string) (string, error) {
+	fmt.Print(prompt)
+	bytePassword, err := term.ReadPassword(int(syscall.Stdin))
+	fmt.Println() // Print newline after password input
+	if err != nil {
+		return "", err
+	}
+	return string(bytePassword), nil
+}
+
+// createPasswordProtectedZIP creates a password-protected ZIP archive using AES-256 encryption
+func createPasswordProtectedZIP(archiveEntity *archive.Archive, outputPath, password string) error {
+	// Create the encrypted ZIP file
+	file, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("failed to create encrypted ZIP file: %w", err)
+	}
+	defer file.Close()
+
+	// Create ZIP writer with encryption support
+	zipWriter := yekazip.NewWriter(file)
+	defer zipWriter.Close()
+
+	logger.WithField("file_count", len(archiveEntity.Entries)).
+		WithField("output_path", outputPath).
+		WithField("encryption", "AES-256").
+		Info("Creating encrypted ZIP archive")
+
+	// Add each entry to the encrypted ZIP
+	for _, entry := range archiveEntity.Entries {
+		// Create ZIP header
+		header := &yekazip.FileHeader{
+			Name:   entry.Name,
+			Method: yekazip.Deflate,
+		}
+		header.SetModTime(entry.ModifiedAt)
+		header.SetMode(os.FileMode(entry.Permissions))
+
+		// Set encryption method to AES-256
+		header.SetPassword(password)
+		header.SetEncryptionMethod(yekazip.AES256Encryption)
+
+		// Create writer for this entry
+		w, err := zipWriter.CreateHeader(header)
+		if err != nil {
+			return fmt.Errorf("failed to create encrypted ZIP entry %s: %w", entry.Name, err)
+		}
+
+		// Write entry content
+		if _, err := w.Write(entry.Content); err != nil {
+			return fmt.Errorf("failed to write encrypted ZIP entry %s: %w", entry.Name, err)
+		}
+	}
+
+	logger.WithField("file_count", len(archiveEntity.Entries)).
+		WithField("total_size", archiveEntity.TotalSize).
+		Info("Encrypted ZIP archive created successfully")
+
+	return nil
 }

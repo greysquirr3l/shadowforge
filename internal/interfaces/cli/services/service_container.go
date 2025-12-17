@@ -10,6 +10,7 @@ import (
 	"github.com/greysquirr3l/shadowforge/internal/infrastructure/crypto"
 	"github.com/greysquirr3l/shadowforge/internal/infrastructure/errorcorrection"
 	"github.com/greysquirr3l/shadowforge/internal/infrastructure/media"
+	"github.com/greysquirr3l/shadowforge/internal/infrastructure/selection"
 	stegoImpl "github.com/greysquirr3l/shadowforge/internal/infrastructure/stego_impl"
 )
 
@@ -26,6 +27,9 @@ type ServiceContainer struct {
 	EmbedHandler           *commands.EmbedHandler
 	ExtractHandler         *commands.ExtractHandler
 	AnalyzeCapacityHandler *commands.AnalyzeCapacityHandler
+	ScanHandler            *commands.ScanDirectoryHandler
+	SelectHandler          *commands.SelectCoversHandler
+	SuggestHandler         *commands.GenerateSuggestionsHandler
 }
 
 // NewServiceContainer initializes all services with proper dependency injection.
@@ -62,6 +66,14 @@ func NewServiceContainer() (*ServiceContainer, error) {
 		logger.Log,
 	)
 
+	// Initialize selection infrastructure
+	directoryScanner := selection.NewDirectoryScanner(mediaService, stegoService)
+
+	// Initialize selection command handlers
+	scanHandler := commands.NewScanDirectoryHandler(directoryScanner)
+	selectHandler := commands.NewSelectCoversHandler()
+	suggestHandler := commands.NewGenerateSuggestionsHandler()
+
 	// Validate all handlers were created successfully
 	if embedHandler == nil {
 		return nil, fmt.Errorf("failed to create embed handler")
@@ -81,5 +93,8 @@ func NewServiceContainer() (*ServiceContainer, error) {
 		EmbedHandler:           embedHandler,
 		ExtractHandler:         extractHandler,
 		AnalyzeCapacityHandler: analyzeCapacityHandler,
+		ScanHandler:            scanHandler,
+		SelectHandler:          selectHandler,
+		SuggestHandler:         suggestHandler,
 	}, nil
 }

@@ -16,7 +16,8 @@
         // Emphasis used instead of a heading - allow for emphasis blocks
         "MD036": false,
         // Table column style - be lenient
-        "MD060": false
+        "MD060": false,
+        "MD033": false
     },
     "globs": [
         ".github/**/*.md"
