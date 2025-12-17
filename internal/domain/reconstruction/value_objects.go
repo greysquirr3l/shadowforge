@@ -25,7 +25,7 @@ func ParseSessionID(s string) (SessionID, error) {
 		return SessionID{}, ErrInvalidSessionID
 	}
 	if _, err := uuid.Parse(s); err != nil {
-		return SessionID{}, fmt.Errorf("invalid session ID format: %w", err)
+		return SessionID{}, fmt.Errorf("%w: %v", ErrInvalidSessionID, err)
 	}
 	return SessionID{value: s}, nil
 }
@@ -56,7 +56,7 @@ func ParseAttemptID(s string) (AttemptID, error) {
 		return AttemptID{}, ErrInvalidAttemptID
 	}
 	if _, err := uuid.Parse(s); err != nil {
-		return AttemptID{}, fmt.Errorf("invalid attempt ID format: %w", err)
+		return AttemptID{}, fmt.Errorf("%w: %v", ErrInvalidAttemptID, err)
 	}
 	return AttemptID{value: s}, nil
 }
@@ -113,7 +113,7 @@ func NewRecoveryStrategy(algorithm RecoveryAlgorithm, params map[string]interfac
 		return RecoveryStrategy{}, ErrInvalidStrategy
 	}
 	if threshold <= 0 {
-		return RecoveryStrategy{}, fmt.Errorf("threshold must be positive: %d", threshold)
+		return RecoveryStrategy{}, fmt.Errorf("%w: threshold must be positive: %d", ErrInvalidStrategy, threshold)
 	}
 	if params == nil {
 		params = make(map[string]interface{})
@@ -233,7 +233,7 @@ func NewRecoveryProgress(total, verified, failed int) (RecoveryProgress, error) 
 		return RecoveryProgress{}, fmt.Errorf("verified and failed counts must be non-negative")
 	}
 	if verified+failed > total {
-		return RecoveryProgress{}, fmt.Errorf("verified + failed (%d) exceeds total (%d)", verified+failed, total)
+		return RecoveryProgress{}, fmt.Errorf("%w: verified + failed (%d) exceeds total (%d)", ErrInvalidProgress, verified+failed, total)
 	}
 
 	progress := RecoveryProgress{
@@ -246,10 +246,11 @@ func NewRecoveryProgress(total, verified, failed int) (RecoveryProgress, error) 
 	return progress, nil
 }
 
-// Calculate updates the percent complete based on verified shards.
+// Calculate updates the percent complete based on verified and failed shards.
 func (p *RecoveryProgress) Calculate() {
 	if p.TotalShards > 0 {
-		p.PercentComplete = float64(p.VerifiedShards) / float64(p.TotalShards)
+		processed := p.VerifiedShards + p.FailedShards
+		p.PercentComplete = float64(processed) / float64(p.TotalShards)
 	} else {
 		p.PercentComplete = 0.0
 	}
@@ -318,15 +319,16 @@ func (c ShardCollection) Contains(index int) bool {
 
 // String returns the string representation of the collection.
 func (c ShardCollection) String() string {
-	if len(c.indices) == 0 {
-		return "ShardCollection{empty}"
+	count := len(c.indices)
+	if count == 0 {
+		return "ShardCollection[0]{empty}"
 	}
 
-	// Format as comma-separated list
-	strs := make([]string, len(c.indices))
+	// Format as comma-separated list with count
+	strs := make([]string, count)
 	for i, idx := range c.indices {
 		strs[i] = fmt.Sprintf("%d", idx)
 	}
 
-	return fmt.Sprintf("ShardCollection{%s}", strings.Join(strs, ", "))
+	return fmt.Sprintf("ShardCollection[%d]{%s}", count, strings.Join(strs, ", "))
 }

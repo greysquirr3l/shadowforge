@@ -2,6 +2,8 @@
 package services
 
 import (
+	"fmt"
+
 	"github.com/greysquirr3l/shadowforge/pkg/logger"
 
 	"github.com/greysquirr3l/shadowforge/internal/application/commands"
@@ -59,6 +61,17 @@ func NewServiceContainer() (*ServiceContainer, error) {
 		mediaService,
 		logger.Log,
 	)
+
+	// Validate all handlers were created successfully
+	if embedHandler == nil {
+		return nil, fmt.Errorf("failed to create embed handler")
+	}
+	if extractHandler == nil {
+		return nil, fmt.Errorf("failed to create extract handler")
+	}
+	if analyzeCapacityHandler == nil {
+		return nil, fmt.Errorf("failed to create analyze capacity handler")
+	}
 
 	return &ServiceContainer{
 		CryptoService:          cryptoService,

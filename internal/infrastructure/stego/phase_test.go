@@ -2,15 +2,16 @@ package stego
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"math"
 	"testing"
 
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
+	"github.com/greysquirr3l/shadowforge/pkg/testutil"
 )
 
 func TestPhaseTechnique_NewPhaseTechnique(t *testing.T) {
@@ -113,29 +114,29 @@ func TestPhaseTechnique_CalculateCapacity(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		carrier     []byte
+		numSamples  int
 		expectError bool
 		errorType   error
 	}{
 		{
 			name:        "sufficient_capacity",
-			carrier:     make([]byte, 2048),
+			numSamples:  100000, // 100000/256 - 32 = 358 bits
 			expectError: false,
 		},
 		{
 			name:        "small_but_sufficient",
-			carrier:     make([]byte, 1024),
+			numSamples:  11000, // 11000/256 - 32 = 10 bits (>= 8 bits minimum)
 			expectError: false,
 		},
 		{
 			name:        "insufficient_capacity",
-			carrier:     make([]byte, 512),
+			numSamples:  2000, // 2000/256 - 32 < 8 bits (insufficient)
 			expectError: true,
 			errorType:   stego.ErrInsufficientCapacity,
 		},
 		{
 			name:        "empty_carrier",
-			carrier:     []byte{},
+			numSamples:  0,
 			expectError: true,
 			errorType:   stego.ErrInsufficientCapacity,
 		},
@@ -143,7 +144,9 @@ func TestPhaseTechnique_CalculateCapacity(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			capacity, err := technique.CalculateCapacity(ctx, tt.carrier)
+			// Create WAV carrier with specified number of samples
+			carrier := testutil.GenerateStereo16BitWAV(tt.numSamples)
+			capacity, err := technique.CalculateCapacity(ctx, carrier)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -152,9 +155,10 @@ func TestPhaseTechnique_CalculateCapacity(t *testing.T) {
 			} else {
 				require.NoError(t, err)
 				assert.Greater(t, capacity, 0)
-				// Verify capacity is reasonable (1 bit per 8 bytes)
-				expectedCapacity := len(tt.carrier) / 8
-				assert.Equal(t, expectedCapacity, capacity)
+				// For DSSS: capacity = (samples / chipLength) - 32 bits
+				// chipLength = 256
+				expectedCapacity := (tt.numSamples / 256) - 32
+				assert.Equal(t, expectedCapacity, capacity, "Capacity should match DSSS formula")
 			}
 		})
 	}
@@ -166,32 +170,32 @@ func TestPhaseTechnique_EmbedAndExtract(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		carrier     []byte
+		numSamples  int
 		payload     []byte
 		expectError bool
 		errorType   error
 	}{
 		{
 			name:        "simple_embed_extract",
-			carrier:     make([]byte, 2048),
+			numSamples:  100000,
 			payload:     []byte("test payload"),
 			expectError: false,
 		},
 		{
 			name:        "larger_payload",
-			carrier:     make([]byte, 4096),
+			numSamples:  500000,
 			payload:     []byte("This is a longer test payload with more data to embed in the audio file"),
 			expectError: false,
 		},
 		{
 			name:        "minimum_size",
-			carrier:     make([]byte, 1024),
+			numSamples:  50000,
 			payload:     []byte("short"),
 			expectError: false,
 		},
 		{
 			name:        "empty_payload",
-			carrier:     make([]byte, 2048),
+			numSamples:  100000,
 			payload:     []byte{},
 			expectError: true,
 			errorType:   stego.ErrEmptyPayload,
@@ -200,8 +204,11 @@ func TestPhaseTechnique_EmbedAndExtract(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Generate proper WAV carrier with white noise
+			carrier := testutil.GenerateStereo16BitWAV(tt.numSamples)
+
 			// Test embedding
-			stegoCarrier, err := technique.Embed(ctx, tt.carrier, tt.payload)
+			stegoCarrier, err := technique.Embed(ctx, carrier, tt.payload)
 
 			if tt.expectError {
 				require.Error(t, err)
@@ -211,17 +218,17 @@ func TestPhaseTechnique_EmbedAndExtract(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, stegoCarrier)
-			assert.Greater(t, len(stegoCarrier), len(tt.carrier),
-				"Stego carrier should be larger than original")
+			// Phase encoding modifies samples in-place, maintains WAV size
+			assert.Equal(t, len(carrier), len(stegoCarrier),
+				"Phase encoding should maintain WAV file size")
 
 			// Test extraction
 			extracted, err := technique.Extract(ctx, stegoCarrier)
 			require.NoError(t, err)
 			assert.NotNil(t, extracted)
 
-			// For this simplified implementation, we don't expect exact payload recovery
-			// In a full implementation, this would verify: assert.Equal(t, tt.payload, extracted)
-			assert.Greater(t, len(extracted), 0, "Should extract some data")
+			// Verify exact payload recovery
+			assert.Equal(t, tt.payload, extracted, "Extracted payload should match original")
 		})
 	}
 }
@@ -230,37 +237,35 @@ func TestPhaseTechnique_ExtractFromNonStegoCarrier(t *testing.T) {
 	technique := NewPhaseWithDefaults(logrus.New())
 	ctx := context.Background()
 
-	// Try to extract from a carrier that hasn't had data embedded
-	plainCarrier := make([]byte, 2048)
+	// Generate proper WAV carrier without embedded data
+	plainCarrier := testutil.GenerateStereo16BitWAV(50000)
 
-	extracted, err := technique.Extract(ctx, plainCarrier)
+	// Extracting from non-stego carrier should fail or return invalid data
+	_, err := technique.Extract(ctx, plainCarrier)
 
-	// For this simplified implementation, it should still return something
-	// In a full implementation, this might return an error or empty data
-	require.NoError(t, err)
-	assert.NotNil(t, extracted)
+	// For phase encoding, random phase values will decode to garbage length
+	// The implementation should detect this and return an error
+	require.Error(t, err, "Should fail to extract from non-stego carrier")
 }
 
 func TestPhaseTechnique_EmbedInsufficientCapacity(t *testing.T) {
 	technique := NewPhaseWithDefaults(logrus.New())
 	ctx := context.Background()
 
-	// Test with a very small carrier
-	smallCarrier := make([]byte, 100)
+	// Generate small WAV file - not enough capacity
+	smallCarrier := testutil.GenerateStereo16BitWAV(100)
 	payload := []byte("test payload")
 
-	// This should work with the current simplified implementation
-	// In a full implementation, this might fail if payload exceeds capacity
 	_, err := technique.Embed(ctx, smallCarrier, payload)
 
-	// Current implementation allows this - adjust when full implementation is done
-	assert.NoError(t, err)
+	// Should fail due to insufficient capacity
+	require.Error(t, err, "Should fail with insufficient capacity")
 }
 
 func TestDefaultPhaseConfig(t *testing.T) {
 	config := DefaultPhaseConfig()
 
-	assert.Equal(t, 1024, config.SegmentSize)
+	assert.Equal(t, 256, config.SegmentSize) // ChipLength for DSSS - 24dB process gain
 	assert.Equal(t, math.Pi/8, config.PhaseThreshold)
 	assert.Equal(t, 10, config.MinFrequency)
 	assert.Equal(t, 512, config.MaxFrequency)

@@ -5,6 +5,7 @@ package testutil
 import (
 	"bytes"
 	"encoding/binary"
+	"math/rand"
 )
 
 // WAVHeader represents a standard WAV file header structure.
@@ -86,6 +87,9 @@ func Generate32BitWAV(numSamples int) []byte {
 
 // generateWAVWithSamples creates a minimal valid WAV file for testing.
 // This is the core implementation used by all WAV generation functions.
+// Generates WHITE NOISE which has ideal properties for echo hiding detection:
+// - No periodic structure that would confuse autocorrelation
+// - Flat autocorrelation at non-zero lags, making echoes clearly detectable
 func generateWAVWithSamples(sampleRate, bitDepth, channels, numSamples int) []byte {
 	bytesPerSample := bitDepth / 8
 	dataSize := uint32(numSamples * channels * bytesPerSample)
@@ -109,17 +113,45 @@ func generateWAVWithSamples(sampleRate, bitDepth, channels, numSamples int) []by
 	var buf bytes.Buffer
 	binary.Write(&buf, binary.LittleEndian, &header)
 
-	// Write silent samples (or tone if configured)
-	for i := 0; i < numSamples*channels; i++ {
-		switch bitDepth {
-		case 8:
-			buf.WriteByte(128) // Silence for 8-bit unsigned (centered at 128)
-		case 16:
-			binary.Write(&buf, binary.LittleEndian, int16(0))
-		case 24:
-			buf.Write([]byte{0, 0, 0})
-		case 32:
-			binary.Write(&buf, binary.LittleEndian, int32(0))
+	// Use deterministic seed for reproducible tests
+	rng := rand.New(rand.NewSource(42))
+
+	for i := 0; i < numSamples; i++ {
+		// Generate pure WHITE noise - random values in [-1, 1]
+		// White noise has near-zero autocorrelation at non-zero lags,
+		// making it ideal for detecting added echoes via autocorrelation.
+		sampleValue := (rng.Float64()*2 - 1) * 0.7 // Scale to 70% amplitude
+
+		// Clamp to [-1, 1]
+		if sampleValue > 1.0 {
+			sampleValue = 1.0
+		}
+		if sampleValue < -1.0 {
+			sampleValue = -1.0
+		}
+
+		// Write same sample value to all channels
+		for ch := 0; ch < channels; ch++ {
+			switch bitDepth {
+			case 8:
+				// 8-bit unsigned (0-255, center at 128)
+				value := uint8(128 + sampleValue*127)
+				buf.WriteByte(value)
+			case 16:
+				// 16-bit signed (-32768 to 32767)
+				value := int16(sampleValue * 32767)
+				binary.Write(&buf, binary.LittleEndian, value)
+			case 24:
+				// 24-bit signed
+				value := int32(sampleValue * 8388607) // 2^23 - 1
+				buf.WriteByte(byte(value))
+				buf.WriteByte(byte(value >> 8))
+				buf.WriteByte(byte(value >> 16))
+			case 32:
+				// 32-bit signed
+				value := int32(sampleValue * 2147483647)
+				binary.Write(&buf, binary.LittleEndian, value)
+			}
 		}
 	}
 

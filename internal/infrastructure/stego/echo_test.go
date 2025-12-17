@@ -11,6 +11,7 @@ import (
 
 	"github.com/greysquirr3l/shadowforge/internal/domain/media"
 	"github.com/greysquirr3l/shadowforge/internal/domain/stego"
+	"github.com/greysquirr3l/shadowforge/pkg/testutil"
 )
 
 func TestEchoTechnique_NewEchoTechnique(t *testing.T) {
@@ -203,7 +204,16 @@ func TestEchoTechnique_EmbedAndExtract(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			carrier := make([]byte, tt.carrierSize)
+			// Echo technique needs enough samples for segments
+			// Default segment length is 8192 samples
+			// Each bit requires one segment
+			// Calculate required samples: (payload_bytes * 8 + 32 header bits) * segment_length
+			// For 53-byte payload: (53*8 + 32) = 456 bits = 456 segments = 3,735,552 samples
+			// Generate enough samples for the largest test payload
+			numSamples := 4000000 // Enough for ~53 bytes: (53*8+32)*8192 = 3,735,552
+
+			// Generate proper WAV carrier
+			carrier := testutil.GenerateStereo16BitWAV(numSamples)
 
 			// Test embedding
 			stegoCarrier, err := technique.Embed(ctx, carrier, tt.payload)
@@ -216,8 +226,9 @@ func TestEchoTechnique_EmbedAndExtract(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.NotNil(t, stegoCarrier)
-			assert.Greater(t, len(stegoCarrier), len(carrier),
-				"Stego carrier should be larger than original")
+			// Echo hiding modifies samples in-place, doesn't increase file size
+			assert.Equal(t, len(carrier), len(stegoCarrier),
+				"Echo hiding should maintain WAV file size")
 
 			// Test extraction
 			extracted, err := technique.Extract(ctx, stegoCarrier)
@@ -235,25 +246,26 @@ func TestEchoTechnique_ExtractFromNonStegoCarrier(t *testing.T) {
 	technique := NewEchoWithDefaults(logrus.New())
 	ctx := context.Background()
 
-	// Try to extract from a carrier that hasn't had data embedded
-	plainCarrier := make([]byte, 16384)
+	// Generate proper WAV carrier without embedded data (large enough for extraction)
+	plainCarrier := testutil.GenerateStereo16BitWAV(1100000)
 
 	extracted, err := technique.Extract(ctx, plainCarrier)
 
-	// For this simplified implementation, it should still return something
-	// In a full implementation, this might return an error or empty data
-	require.NoError(t, err)
-	assert.NotNil(t, extracted)
+	// Extracting from non-stego carrier should fail with corrupted container error
+	// because the random audio data doesn't contain valid length header
+	require.Error(t, err)
+	assert.ErrorIs(t, err, stego.ErrCorruptedContainer)
+	assert.Nil(t, extracted)
 }
 
 func TestDefaultEchoConfig(t *testing.T) {
 	config := DefaultEchoConfig()
 
-	assert.Equal(t, 100, config.Delay0)
-	assert.Equal(t, 101, config.Delay1)
-	assert.Equal(t, 0.1, config.Amplitude)
-	assert.Equal(t, 8192, config.SegmentLen)
-	assert.Equal(t, 0.8, config.MixRatio)
+	assert.Equal(t, 150, config.Delay0)      // ~3.4ms at 44.1kHz
+	assert.Equal(t, 500, config.Delay1)      // ~11.3ms at 44.1kHz
+	assert.Equal(t, 0.5, config.Amplitude)   // 50% echo strength
+	assert.Equal(t, 8192, config.SegmentLen) // Segment length
+	assert.Equal(t, 0.5, config.MixRatio)    // 50/50 mix ratio
 }
 
 func TestEchoTechnique_InterfaceCompliance(t *testing.T) {

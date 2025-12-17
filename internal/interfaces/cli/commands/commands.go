@@ -75,7 +75,7 @@ Examples:
 	// Add flags for embed command
 	embedCmd.Flags().StringP("input", "i", "", "Input file to embed (required)")
 	embedCmd.Flags().StringP("cover", "c", "", "Cover media file (required)")
-	embedCmd.Flags().StringP("output", "o", "", "Output file path (required)")
+	embedCmd.Flags().StringP("output", "o", "", "Output file path (auto-generated if omitted)")
 	embedCmd.Flags().StringP("technique", "t", "", "Steganography technique (auto-detect if empty)")
 	embedCmd.Flags().StringP("password", "p", "", "Password for encryption (optional)")
 	embedCmd.Flags().Float64P("redundancy", "r", 0.0, "Reed-Solomon redundancy level (0.0-1.0)")
@@ -85,7 +85,7 @@ Examples:
 	// Mark required flags
 	embedCmd.MarkFlagRequired("input")
 	embedCmd.MarkFlagRequired("cover")
-	embedCmd.MarkFlagRequired("output")
+	// output is now optional - will be auto-generated
 
 	return []*cobra.Command{embedCmd}, nil
 }
@@ -102,6 +102,12 @@ func (h *CLIHandlers) handleEmbedCommand(cmd *cobra.Command, args []string, logg
 	quality, _ := cmd.Flags().GetInt("quality")
 	jsonOutput, _ := cmd.Flags().GetBool("json")
 
+	// Auto-generate output filename if not specified
+	if outputFile == "" {
+		outputFile = generateEmbedOutputFilename(coverFile)
+		logger.WithField("auto_generated_output", outputFile).Info("Auto-generated output filename")
+	}
+
 	// Validate files exist
 	if _, err := os.Stat(inputFile); os.IsNotExist(err) {
 		return fmt.Errorf("input file does not exist: %s", inputFile)
@@ -110,27 +116,32 @@ func (h *CLIHandlers) handleEmbedCommand(cmd *cobra.Command, args []string, logg
 		return fmt.Errorf("cover file does not exist: %s", coverFile)
 	}
 
-	// Convert technique string to enum if specified
+	// Convert technique string to enum if specified, otherwise use intelligent selection
 	var stegoTechnique stego.StegoTechnique
 	if technique != "" {
-		switch strings.ToLower(technique) {
-		case "lsb":
-			stegoTechnique = stego.LSB
-		case "dct":
-			stegoTechnique = stego.DCT
-		case "phase":
-			stegoTechnique = stego.PhaseEncoding
-		case "echo":
-			stegoTechnique = stego.EchoHiding
-		case "lsbaudio", "lsb_audio":
-			stegoTechnique = stego.LSB
-		case "zerowidth", "zero_width":
-			stegoTechnique = stego.ZeroWidth
-		case "palette":
-			stegoTechnique = stego.Palette
-		default:
-			return fmt.Errorf("unsupported technique: %s. Supported: lsb, dct, phase, echo, lsbaudio, zerowidth, palette", technique)
+		var err error
+		stegoTechnique, err = stringToTechnique(technique)
+		if err != nil {
+			return fmt.Errorf("invalid technique: %w", err)
 		}
+	} else {
+		// Get payload size for intelligent selection
+		payloadInfo, err := os.Stat(inputFile)
+		if err != nil {
+			return fmt.Errorf("failed to stat input file: %w", err)
+		}
+		payloadSize := payloadInfo.Size()
+
+		// Use intelligent technique selection for maximum obfuscation
+		stegoTechnique, err = selectOptimalTechnique(coverFile, payloadSize)
+		if err != nil {
+			return fmt.Errorf("failed to select technique: %w", err)
+		}
+		logger.WithFields(logrus.Fields{
+			"selected_technique": stegoTechnique,
+			"payload_size":       payloadSize,
+			"cover_file":         coverFile,
+		}).Info("Auto-selected optimal technique for maximum obfuscation")
 	}
 
 	// Create embed command
@@ -272,12 +283,15 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 		logger.Info("Verbose mode enabled")
 	}
 
+	// Auto-generate output filename if not specified
+	if outputFile == "" {
+		outputFile = generateExtractOutputFilename(inputFile)
+		logger.WithField("auto_generated_output", outputFile).Info("Auto-generated output filename")
+	}
+
 	// Validate required flags
 	if inputFile == "" {
 		return fmt.Errorf("input file is required (use --input)")
-	}
-	if outputFile == "" {
-		return fmt.Errorf("output file is required (use --output)")
 	}
 
 	// Validate input file exists and is readable
@@ -285,7 +299,7 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 		return fmt.Errorf("input file does not exist: %s", inputFile)
 	}
 
-	// Convert technique string to domain type if specified
+	// Convert technique string to domain type if specified, otherwise auto-detect
 	var technique stego.StegoTechnique
 	if techniqueStr != "" {
 		var err error
@@ -293,6 +307,17 @@ func (h *CLIHandlers) handleExtractCommand(cmd *cobra.Command, args []string) er
 		if err != nil {
 			return fmt.Errorf("invalid technique: %w", err)
 		}
+	} else {
+		// Auto-detect technique based on file type
+		var err error
+		technique, err = autoDetectEmbeddedTechnique(inputFile)
+		if err != nil {
+			return fmt.Errorf("failed to auto-detect technique: %w", err)
+		}
+		logger.WithFields(logrus.Fields{
+			"detected_technique": technique,
+			"input_file":         inputFile,
+		}).Info("Auto-detected embedded technique")
 	}
 
 	// Create extract command
@@ -445,11 +470,14 @@ Automatically detects and uses the correct extraction method for:
 
 	// Add flags
 	extractCmd.Flags().StringP("input", "i", "", "Input stego media file (required)")
-	extractCmd.Flags().StringP("output", "o", "", "Output file for extracted data (required)")
+	extractCmd.Flags().StringP("output", "o", "", "Output file for extracted data (auto-generated if omitted)")
 	extractCmd.Flags().StringP("password", "p", "", "Decryption password (if encrypted)")
 	extractCmd.Flags().StringP("technique", "t", "", "Steganography technique (auto-detect if not specified)")
 	extractCmd.Flags().BoolP("json", "j", false, "Output in JSON format")
 	extractCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+
+	// Mark required flags (output is now optional)
+	extractCmd.MarkFlagRequired("input")
 
 	return []*cobra.Command{extractCmd}, nil
 }
@@ -475,8 +503,7 @@ Analysis capabilities:
 		Long:  "Calculate the maximum data capacity for different steganographic techniques",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			h := &CLIHandlers{logger: logger}
-			return h.handleAnalyzeCapacityCommand(cmd, args)
+			return handlers.handleAnalyzeCapacityCommand(cmd, args)
 		},
 	}
 
@@ -539,7 +566,33 @@ for quantum-resistant security.`,
 		},
 	}
 
-	return []*cobra.Command{keygenCmd, formatsCmd}, nil
+	// Scan directory command
+	scanDirCmd := &cobra.Command{
+		Use:   "scan-directory",
+		Short: "Scan a directory for compatible cover media",
+		Long: `Scan a directory for compatible cover media files and calculate their steganographic capacity.
+
+This command analyzes all supported media files in the specified directory and provides:
+  • Per-file capacity analysis with recommended technique
+  • Combined total capacity if all files are used
+  • File compatibility assessment
+
+Supported media types:
+  • Images: PNG, BMP, JPEG, GIF
+  • Audio: WAV
+  • Text: TXT, MD`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return handleScanDirectoryCommand(cmd, args, logger)
+		},
+	}
+
+	// Add flags for scan-directory
+	scanDirCmd.Flags().StringP("dir", "d", "", "Directory to scan (required)")
+	scanDirCmd.Flags().BoolP("json", "j", false, "Output results in JSON format")
+	scanDirCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
+	scanDirCmd.MarkFlagRequired("dir")
+
+	return []*cobra.Command{keygenCmd, formatsCmd, scanDirCmd}, nil
 }
 
 // outputEmbedResult displays embed operation results in human-readable format.
@@ -676,4 +729,287 @@ func formatBytes(bytes int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %cB", float64(bytes)/float64(div), "KMGTPE"[exp])
+}
+
+// MediaFileInfo holds information about a scanned media file
+type MediaFileInfo struct {
+	Path                 string               `json:"path"`
+	Name                 string               `json:"name"`
+	Size                 int64                `json:"size"`
+	MediaType            string               `json:"media_type"`
+	Extension            string               `json:"extension"`
+	RecommendedTechnique stego.StegoTechnique `json:"recommended_technique"`
+	MaxCapacity          int64                `json:"max_capacity"`
+	SafeCapacity         int64                `json:"safe_capacity"`
+	QualityScore         float64              `json:"quality_score"`
+	StealthScore         float64              `json:"stealth_score"`
+}
+
+// ScanDirectoryResult holds the complete directory scan results
+type ScanDirectoryResult struct {
+	Directory         string          `json:"directory"`
+	TotalFiles        int             `json:"total_files"`
+	CompatibleFiles   []MediaFileInfo `json:"compatible_files"`
+	SkippedFiles      []string        `json:"skipped_files"`
+	TotalCapacity     int64           `json:"total_capacity"`
+	SafeTotalCapacity int64           `json:"safe_total_capacity"`
+	ScanTime          time.Duration   `json:"scan_time_ms"`
+}
+
+// handleScanDirectoryCommand scans a directory for compatible media files
+func handleScanDirectoryCommand(cmd *cobra.Command, args []string, logger *logrus.Logger) error {
+	startTime := time.Now()
+
+	// Parse flags
+	directory, _ := cmd.Flags().GetString("dir")
+	jsonOutput, _ := cmd.Flags().GetBool("json")
+	verbose, _ := cmd.Flags().GetBool("verbose")
+
+	if verbose {
+		logger.Info("Verbose mode enabled")
+	}
+
+	// Validate directory exists
+	dirInfo, err := os.Stat(directory)
+	if os.IsNotExist(err) {
+		return fmt.Errorf("directory does not exist: %s", directory)
+	}
+	if !dirInfo.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", directory)
+	}
+
+	logger.WithField("directory", directory).Info("Scanning directory for compatible media")
+
+	// Read directory contents
+	entries, err := os.ReadDir(directory)
+	if err != nil {
+		return fmt.Errorf("failed to read directory: %w", err)
+	}
+
+	var compatibleFiles []MediaFileInfo
+	var skippedFiles []string
+	var totalCapacity int64
+	var safeTotalCapacity int64
+
+	// Scan each file
+	for _, entry := range entries {
+		if entry.IsDir() {
+			// Skip subdirectories for now (could add --recursive flag later)
+			continue
+		}
+
+		filePath := filepath.Join(directory, entry.Name())
+		fileExt := strings.ToLower(filepath.Ext(entry.Name()))
+
+		// Check if file extension is supported
+		technique, mediaType, supported := detectMediaTypeAndTechnique(fileExt)
+		if !supported {
+			skippedFiles = append(skippedFiles, entry.Name())
+			if verbose {
+				logger.WithFields(logrus.Fields{
+					"file":      entry.Name(),
+					"extension": fileExt,
+				}).Debug("Skipping unsupported file type")
+			}
+			continue
+		}
+
+		// Get file info
+		fileInfo, err := entry.Info()
+		if err != nil {
+			logger.WithError(err).WithField("file", entry.Name()).Warn("Failed to get file info")
+			skippedFiles = append(skippedFiles, entry.Name())
+			continue
+		}
+
+		// Calculate capacity based on file size and technique
+		maxCapacity, safeCapacity := estimateCapacity(fileInfo.Size(), technique)
+
+		// Get technique scores for quality/stealth
+		score := getTechniqueScore(technique)
+
+		mediaFile := MediaFileInfo{
+			Path:                 filePath,
+			Name:                 entry.Name(),
+			Size:                 fileInfo.Size(),
+			MediaType:            mediaType,
+			Extension:            fileExt,
+			RecommendedTechnique: technique,
+			MaxCapacity:          maxCapacity,
+			SafeCapacity:         safeCapacity,
+			QualityScore:         float64(score.CapacityScore) / 100.0,
+			StealthScore:         float64(score.StealthScore) / 100.0,
+		}
+
+		compatibleFiles = append(compatibleFiles, mediaFile)
+		totalCapacity += maxCapacity
+		safeTotalCapacity += safeCapacity
+
+		if verbose {
+			logger.WithFields(logrus.Fields{
+				"file":      entry.Name(),
+				"type":      mediaType,
+				"technique": technique,
+				"capacity":  formatBytes(safeCapacity),
+			}).Info("Found compatible media file")
+		}
+	}
+
+	scanTime := time.Since(startTime)
+
+	result := ScanDirectoryResult{
+		Directory:         directory,
+		TotalFiles:        len(entries),
+		CompatibleFiles:   compatibleFiles,
+		SkippedFiles:      skippedFiles,
+		TotalCapacity:     totalCapacity,
+		SafeTotalCapacity: safeTotalCapacity,
+		ScanTime:          scanTime,
+	}
+
+	// Output results
+	if jsonOutput {
+		return outputScanDirectoryJSON(result)
+	}
+	return outputScanDirectoryResult(result)
+}
+
+// detectMediaTypeAndTechnique maps file extensions to media types and recommended techniques
+func detectMediaTypeAndTechnique(ext string) (stego.StegoTechnique, string, bool) {
+	switch ext {
+	case ".png", ".bmp":
+		return stego.LSB, "Image", true
+	case ".jpg", ".jpeg":
+		return stego.DCT, "Image", true
+	case ".gif":
+		return stego.Palette, "Image", true
+	case ".wav":
+		return stego.PhaseEncoding, "Audio", true
+	case ".txt", ".md":
+		return stego.ZeroWidth, "Text", true
+	default:
+		return "", "", false
+	}
+}
+
+// estimateCapacity calculates max and safe capacity based on file size and technique
+func estimateCapacity(fileSize int64, technique stego.StegoTechnique) (maxCapacity int64, safeCapacity int64) {
+	switch technique {
+	case stego.LSB:
+		// LSB: 1 bit per pixel channel (24-bit RGB = 3 bits per pixel)
+		// Conservative estimate: fileSize / 4 for max, / 8 for safe
+		maxCapacity = fileSize / 4
+		safeCapacity = fileSize / 8
+	case stego.DCT:
+		// DCT (JPEG): ~10-20% of file size typically
+		maxCapacity = fileSize / 5
+		safeCapacity = fileSize / 10
+	case stego.Palette:
+		// Palette: Very limited, ~1-5% of file size
+		maxCapacity = fileSize / 10
+		safeCapacity = fileSize / 20
+	case stego.PhaseEncoding:
+		// Phase encoding: ~5-15% of audio data
+		maxCapacity = fileSize / 7
+		safeCapacity = fileSize / 15
+	case stego.EchoHiding:
+		// Echo hiding: ~3-10% of audio data
+		maxCapacity = fileSize / 10
+		safeCapacity = fileSize / 20
+	// LSB for audio - covered by LSB case above
+	case stego.ZeroWidth:
+		// Zero-width text: Very limited, depends on word count
+		// Rough estimate: 1 byte per 10 bytes of text
+		maxCapacity = fileSize / 10
+		safeCapacity = fileSize / 20
+	default:
+		maxCapacity = fileSize / 10
+		safeCapacity = fileSize / 20
+	}
+	return
+}
+
+// outputScanDirectoryResult displays scan results in human-readable format
+func outputScanDirectoryResult(result ScanDirectoryResult) error {
+	fmt.Printf("📁 Directory Scan Results\n")
+	fmt.Printf("═══════════════════════════════════════════════════════════════\n\n")
+	fmt.Printf("📂 Directory: %s\n", result.Directory)
+	fmt.Printf("📊 Total Files Scanned: %d\n", result.TotalFiles)
+	fmt.Printf("✅ Compatible Media Files: %d\n", len(result.CompatibleFiles))
+	fmt.Printf("⏭️  Skipped Files: %d\n\n", len(result.SkippedFiles))
+
+	if len(result.CompatibleFiles) > 0 {
+		fmt.Printf("📋 Compatible Media Files:\n")
+		fmt.Printf("───────────────────────────────────────────────────────────────\n")
+
+		// Table header
+		fmt.Printf("%-30s %-10s %-12s %-15s %s\n",
+			"File", "Type", "Technique", "Safe Capacity", "Quality")
+		fmt.Printf("───────────────────────────────────────────────────────────────\n")
+
+		// Table rows
+		for _, file := range result.CompatibleFiles {
+			fileName := file.Name
+			if len(fileName) > 28 {
+				fileName = fileName[:25] + "..."
+			}
+
+			fmt.Printf("%-30s %-10s %-12s %-15s %.1f/%.1f\n",
+				fileName,
+				file.MediaType,
+				file.RecommendedTechnique,
+				formatBytes(file.SafeCapacity),
+				file.QualityScore,
+				file.StealthScore,
+			)
+		}
+
+		fmt.Printf("───────────────────────────────────────────────────────────────\n\n")
+
+		// Summary statistics
+		fmt.Printf("💾 Total Available Capacity:\n")
+		fmt.Printf("   Maximum: %s\n", formatBytes(result.TotalCapacity))
+		fmt.Printf("   Safe:    %s (recommended)\n", formatBytes(result.SafeTotalCapacity))
+		fmt.Printf("\n")
+
+		// Usage suggestions
+		fmt.Printf("💡 Usage Suggestions:\n")
+		fmt.Printf("   • For payloads up to %s: Use any single file\n",
+			formatBytes(getLargestSafeCapacity(result.CompatibleFiles)))
+		fmt.Printf("   • For larger payloads: Use distributed embedding across multiple files\n")
+		fmt.Printf("   • Recommended: Keep capacity usage below 70%% for maximum stealth\n\n")
+	}
+
+	if len(result.SkippedFiles) > 0 {
+		fmt.Printf("⏭️  Skipped Files (unsupported format):\n")
+		for _, fileName := range result.SkippedFiles {
+			fmt.Printf("   • %s\n", fileName)
+		}
+		fmt.Printf("\n")
+	}
+
+	fmt.Printf("⏱️  Scan completed in %dms\n", result.ScanTime.Milliseconds())
+
+	return nil
+}
+
+// outputScanDirectoryJSON outputs scan results in JSON format
+func outputScanDirectoryJSON(result ScanDirectoryResult) error {
+	jsonData, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal result to JSON: %w", err)
+	}
+	fmt.Println(string(jsonData))
+	return nil
+}
+
+// getLargestSafeCapacity finds the file with the largest safe capacity
+func getLargestSafeCapacity(files []MediaFileInfo) int64 {
+	var largest int64
+	for _, file := range files {
+		if file.SafeCapacity > largest {
+			largest = file.SafeCapacity
+		}
+	}
+	return largest
 }

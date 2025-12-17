@@ -17,6 +17,7 @@ import (
 	"github.com/cloudflare/circl/sign/dilithium/mode3"
 
 	domain_crypto "github.com/greysquirr3l/shadowforge/internal/domain/crypto"
+	"github.com/greysquirr3l/shadowforge/pkg/logger"
 )
 
 var (
@@ -49,9 +50,13 @@ type CirclCryptoService struct {
 }
 
 // NewCirclCryptoService creates a new crypto service using CIRCL library.
-func NewCirclCryptoService(logger *logrus.Logger) *CirclCryptoService {
+// If logger is nil, uses the global logger from pkg/logger.
+func NewCirclCryptoService(log *logrus.Logger) *CirclCryptoService {
+	if log == nil {
+		log = logger.Log
+	}
 	return &CirclCryptoService{
-		logger: logger,
+		logger: log,
 	}
 }
 

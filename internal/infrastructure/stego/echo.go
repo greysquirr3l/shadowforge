@@ -24,13 +24,16 @@ type EchoEmbeddingConfig struct {
 }
 
 // DefaultEchoConfig returns default echo hiding configuration.
+// Echo delays must be significantly different for reliable autocorrelation detection.
+// At 44.1kHz: 150 samples = 3.4ms, 500 samples = 11.3ms (7.9ms difference)
+// Amplitude and MixRatio tuned for reliable autocorrelation detection on white noise.
 func DefaultEchoConfig() EchoEmbeddingConfig {
 	return EchoEmbeddingConfig{
-		Delay0:     100, // ~2ms at 44.1kHz
-		Delay1:     101, // ~2.3ms at 44.1kHz
-		Amplitude:  0.1,
+		Delay0:     150, // ~3.4ms at 44.1kHz - short echo for bit 0
+		Delay1:     500, // ~11.3ms at 44.1kHz - long echo for bit 1
+		Amplitude:  0.5, // Echo strength (0.5 gives ~0.02 autocorrelation peak)
 		SegmentLen: 8192,
-		MixRatio:   0.8,
+		MixRatio:   0.5, // 50/50 mix of original and echo
 	}
 }
 
