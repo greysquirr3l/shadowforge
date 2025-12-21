@@ -6,9 +6,11 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Phase%205%20Complete-brightgreen.svg)](docs/implementation_plan_todo.md)
+[![Status](https://img.shields.io/badge/Status-v0.7.6-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge/releases)
 [![Build](https://img.shields.io/badge/Build-Passing-success.svg)](https://github.com/greysquirr3l/shadowforge)
 [![Coverage](https://img.shields.io/badge/Coverage-66%25+-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge)
+[![Lines of Code](https://img.shields.io/badge/Lines-60K+-blue.svg)](https://github.com/greysquirr3l/shadowforge)
+[![Go Code](https://img.shields.io/badge/Go%20Code-42K+-00ADD8.svg)](https://github.com/greysquirr3l/shadowforge)
 
 **Shadowforge** is a production-grade quantum-resistant steganography tool that combines
 NIST-approved post-quantum cryptography, Reed-Solomon error correction, and multiple
@@ -61,14 +63,18 @@ with `K-of-N` threshold recovery.
 
 ## 📈 Project Statistics
 
-- **Total Lines**: ~15,000+ (implementation + tests)
+- **Total Lines**: 60,322 (44,174 code, 6,654 comments, 9,494 blanks)
+- **Go Code**: 41,671 lines across 185 files
+- **Comment Ratio**: 13% (5,385 comment lines)
+- **Languages**: Go (primary), Python, Shell, Markdown, Makefile
 - **Bounded Contexts**: 8 (Crypto, Error Correction, Stego, Media, Analysis, Distribution, Reconstruction, Archive)
-- **Implementation Files**: 83+
-- **Test Files**: 50+
+- **Implementation Files**: 185+ Go files
+- **Test Files**: 50+ comprehensive test suites
 - **Test Coverage**: 85%+ (90%+ for crypto operations)
 - **Distribution Patterns**: 4 (all operational)
 - **Steganography Techniques**: 7/7 (100% complete)
 - **CLI Binary Size**: 8.2MB (fully self-contained)
+- **Shell Completions**: Bash, Fish, Zsh (all commands covered)
 
 ## 🏗️ Architecture
 
@@ -193,6 +199,8 @@ to evade steganalysis detection.
 
 ## 📚 Documentation
 
+**🌐 Web Documentation**: [greysquirr3l.github.io/shadowforge](https://greysquirr3l.github.io/shadowforge/)
+
 Complete documentation available in [`docs/public/cli/`](docs/public/cli/):
 
 **Getting Started:**
@@ -247,6 +255,17 @@ make build
 
 # Run tests
 make test
+
+# Optional: Install shell completions
+# Bash
+sudo cp scripts/completion/shadowforge.bash /etc/bash_completion.d/shadowforge
+
+# Fish
+cp scripts/completion/shadowforge.fish ~/.config/fish/completions/shadowforge.fish
+
+# Zsh
+cp scripts/completion/shadowforge.zsh ~/.zsh/completion/_shadowforge
+# Add to ~/.zshrc: fpath=(~/.zsh/completion $fpath)
 ```
 
 ## 🚀 Quick Start
@@ -356,7 +375,9 @@ curl -X POST http://localhost:8080/api/v1/embed \
 
 ## 📊 Development Status
 
-### Current Phase: **Phase 5 Complete — API deferred (future item); CI/CD + Homebrew prep underway**
+### Current Version: **v0.7.6** (December 2025)
+
+### Current Phase: **Phase 5 Complete — CLI Production Ready**
 
 | Phase | Status | Description |
 |-------|--------|-------------|
@@ -541,9 +562,11 @@ and security purposes only. Always comply with applicable laws and regulations.
 
 ## 🔗 Links
 
+- **Website**: <https://greysquirr3l.github.io/shadowforge>
 - **GitHub**: <https://github.com/greysquirr3l/shadowforge>
-- **Documentation**: [docs/public/cli/architecture.md](docs/public/cli/architecture.md)
+- **Documentation**: [docs/public/cli/](https://greysquirr3l.github.io/shadowforge/cli/)
 - **Issues**: <https://github.com/greysquirr3l/shadowforge/issues>
+- **Releases**: <https://github.com/greysquirr3l/shadowforge/releases>
 
 ---
 
