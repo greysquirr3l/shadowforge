@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Phase%205%20Complete-brightgreen.svg)](docs/implementation_plan_todo.md)
 [![Build](https://img.shields.io/badge/Build-Passing-success.svg)](https://github.com/greysquirr3l/shadowforge)
-[![Coverage](https://img.shields.io/badge/Coverage-85%25+-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge)
+[![Coverage](https://img.shields.io/badge/Coverage-66%25+-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge)
 
 **Shadowforge** is a production-grade quantum-resistant steganography tool that combines
 NIST-approved post-quantum cryptography, Reed-Solomon error correction, and multiple
