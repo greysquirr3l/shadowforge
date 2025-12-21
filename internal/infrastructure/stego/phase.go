@@ -141,6 +141,12 @@ func (p *PhaseTechnique) calculateAdaptiveAlpha(samples []float64) float64 {
 
 // generatePN creates a bipolar PN (pseudonoise) sequence of ±1 values.
 // The sequence is deterministic based on seed for reproducibility.
+//
+// SECURITY NOTE: math/rand is acceptable here because:
+// 1. This generates the PN spreading sequence for DSSS, not cryptographic keys
+// 2. The seed is derived from the encrypted payload (already crypto/rand secured)
+// 3. Deterministic generation is required for correct extraction
+// 4. The payload data itself is already encrypted with post-quantum crypto
 func (p *PhaseTechnique) generatePN(seed int64, length int) []float64 {
 	rng := rand.New(rand.NewSource(seed))
 	pn := make([]float64, length)

@@ -449,6 +449,10 @@ func (h *EmbedMatrixHandler) allocateRandom(
 		}
 	}
 
+	// SECURITY NOTE: math/rand is acceptable here as this is used for non-cryptographic
+	// load balancing of cover allocation. The actual payload data is already encrypted
+	// with crypto/rand before this distribution step. This RNG only affects which cover
+	// file gets which shard, not the security of the payload itself.
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	// Distribute shards randomly

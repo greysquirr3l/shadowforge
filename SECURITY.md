@@ -2,147 +2,81 @@
 
 ## Supported Versions
 
-We take security seriously. The following versions of Shadowforge are currently supported with security updates:
-
-| Version | Supported          | Status |
-| ------- | ------------------ | ------ |
-| 0.7.x   | :white_check_mark: | Current stable release |
-| < 0.7.0 | :x:                | No longer supported |
+| Version | Supported          |
+| ------- | ------------------ |
+| 0.7.x   | :white_check_mark: |
+| < 0.7   | :x:                |
 
 ## Reporting a Vulnerability
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-If you discover a security vulnerability in Shadowforge, please report it responsibly:
+Instead, please report them via:
 
-### Primary Contact
-
-- **Email**: <s0ma@protonmail.com> (if available) or open a [private security advisory](https://github.com/greysquirr3l/shadowforge/security/advisories/new)
-- **Response Time**: We aim to respond within 48 hours
+1. **Email**: Send details to the repository owner
+2. **Private Security Advisory**: Use GitHub's [private vulnerability reporting](https://github.com/greysquirr3l/shadowforge/security/advisories/new)
 
 ### What to Include
 
-Please include the following information in your report:
+Please include the following information:
 
-- **Description**: A clear description of the vulnerability
-- **Impact**: The potential impact and severity
-- **Steps to Reproduce**: Detailed steps to reproduce the issue
-- **Proof of Concept**: Any PoC code or examples (if applicable)
-- **Affected Versions**: Which versions are affected
-- **Suggested Fix**: If you have a suggested remediation (optional)
+- **Type of vulnerability** (e.g., timing attack, memory leak, cryptographic flaw)
+- **Full description** of the vulnerability
+- **Steps to reproduce** the issue
+- **Potential impact** and attack scenarios
+- **Affected versions**
+- **Suggested fix** (if known)
 
-### Security Scope
+### Response Timeline
 
-We are particularly interested in vulnerabilities related to:
-
-- ✅ **Cryptographic Operations**: Kyber-1024, Dilithium3, key generation, encryption/decryption
-- ✅ **Steganographic Techniques**: LSB, DCT, Phase, Echo, Palette, Text, LSB-Audio
-- ✅ **Reed-Solomon Error Correction**: Encoding/decoding, shard recovery
-- ✅ **Archive Handling**: Zip slip, path traversal, malicious archives
-- ✅ **Input Validation**: Command injection, file path manipulation
-- ✅ **Memory Safety**: Buffer overflows, memory leaks, sensitive data exposure
-- ✅ **Side-Channel Attacks**: Timing attacks, cache attacks on cryptographic operations
-- ✅ **Authentication/Authorization**: Key management, access control
-
-### Out of Scope
-
-The following are generally **not** considered security vulnerabilities:
-
-- ❌ Vulnerabilities in dependencies (report to upstream projects)
-- ❌ Social engineering attacks
-- ❌ Denial of service through resource exhaustion (expected behavior for large files)
-- ❌ Issues in unsupported versions (< 0.7.0)
-- ❌ Theoretical attacks without practical exploitation
-
-## Responsible Disclosure Policy
-
-We follow a **90-day disclosure timeline**:
-
-1. **Day 0**: You report the vulnerability privately
-2. **Day 1-7**: We acknowledge receipt and begin investigation
-3. **Day 7-30**: We develop and test a fix
-4. **Day 30-60**: We prepare a security release
-5. **Day 60-90**: We coordinate disclosure with you
-6. **Day 90**: Public disclosure (or earlier if mutually agreed)
-
-### Credit and Recognition
-
-- We will credit you in the security advisory (unless you prefer to remain anonymous)
-- We maintain a [Security Hall of Fame](https://github.com/greysquirr3l/shadowforge/security/advisories) for responsible disclosures
-- Critical vulnerabilities may be eligible for recognition
+- **Initial Response**: Within 48 hours
+- **Status Update**: Within 7 days
+- **Fix Timeline**: Depends on severity
+  - Critical: < 7 days
+  - High: < 14 days
+  - Medium: < 30 days
+  - Low: Next release cycle
 
 ## Security Best Practices
 
-When using Shadowforge, follow these security guidelines:
+When using Shadowforge:
 
-### Cryptographic Operations
-
-- ✅ **Always verify signatures** before trusting extracted data
-- ✅ **Use strong passphrases** for key derivation (20+ characters)
-- ✅ **Rotate keys regularly** for long-term deployments
-- ✅ **Securely store private keys** (use hardware security modules if possible)
-- ❌ **Never reuse keys** across different contexts
-
-### Steganographic Operations
-
-- ✅ **Use high-quality cover media** to minimize detectability
-- ✅ **Monitor capacity limits** to avoid overwriting critical data
-- ✅ **Validate extracted data** for corruption or tampering
-- ✅ **Use Reed-Solomon encoding** for error correction (30% redundancy recommended)
-- ❌ **Don't embed in compressed media** (JPEG quality > 85 recommended)
-
-### Archive Operations
-
-- ✅ **Validate archive contents** before extraction
-- ✅ **Extract to isolated directories** to prevent path traversal
-- ✅ **Scan archives for malware** before processing
-- ✅ **Limit archive sizes** to prevent resource exhaustion
-- ❌ **Never auto-extract untrusted archives**
-
-### Operational Security
-
-- ✅ **Run with least privilege** (don't use root/admin unless required)
-- ✅ **Use secure channels** for key exchange (never email keys)
-- ✅ **Audit all operations** in production environments
-- ✅ **Keep software updated** to the latest stable version
-- ❌ **Never log sensitive data** (keys, payloads, passphrases)
-
-## Security Audits
-
-Shadowforge undergoes regular security reviews:
-
-- **Code Reviews**: All cryptographic code is peer-reviewed
-- **Dependency Scanning**: Automated vulnerability scanning with `go list -m all | nancy sleuth`
-- **Static Analysis**: `go vet` and `golangci-lint` on every commit
-- **Penetration Testing**: Periodic security assessments (planned)
+1. **Always verify checksums** of downloaded binaries
+2. **Use strong passwords** for encrypted archives
+3. **Keep dependencies updated** (check releases regularly)
+4. **Run in isolated environments** when processing untrusted media
+5. **Review security audit reports** before deploying
 
 ## Known Security Considerations
 
-### Post-Quantum Cryptography
+### Timing Attacks
 
-- **Kyber-1024**: NIST standardized (FIPS 203) - secure against quantum attacks
-- **Dilithium3**: NIST standardized (FIPS 204) - quantum-resistant signatures
-- **Implementation**: Uses Cloudflare CIRCL library (audited)
+- Shadowforge uses constant-time comparison for cryptographic operations
+- Some non-cryptographic code may have timing variations (documented in audit)
 
-### Steganographic Detection
+### File Processing
 
-- **Statistical Analysis**: LSB/DCT techniques detectable with RS/Chi-square analysis
-- **Mitigation**: Use high-quality media, stay under capacity limits, apply ±1 LSB matching
-- **Recommendation**: Combine multiple techniques with chaining for enhanced security
+- All archive extraction includes zip-slip protection
+- File size limits enforced to prevent resource exhaustion
+- Sanitization applied to all media inputs
 
-### Reed-Solomon Error Correction
+### Cryptographic Guarantees
 
-- **Redundancy Trade-off**: Higher redundancy = better recovery but larger payload
-- **Recommendation**: 30% redundancy (3 parity shards per 10 data shards) for standard use
-- **Critical Data**: Use 50%+ redundancy for high-reliability requirements
+- Post-quantum security via Kyber-1024 (KEM) and Dilithium3 (signatures)
+- AES-GCM for symmetric encryption
+- Argon2id for key derivation
+- HMAC-SHA256 for message authentication
 
-## Contact
+## Security Audit
 
-- **General Security**: <s0ma@protonmail.com> (if available)
-- **GitHub Security Advisories**: [Create Private Advisory](https://github.com/greysquirr3l/shadowforge/security/advisories/new)
-- **Project Maintainer**: [@greysquirr3l](https://github.com/greysquirr3l)
+Latest security audit: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
+Date: December 21, 2025
+Version: 0.7.6
+
+## Hall of Fame
+
+Contributors who have responsibly disclosed vulnerabilities will be acknowledged here (with their permission).
 
 ---
 
 **Last Updated**: December 21, 2025
-**Version**: 0.7.5
