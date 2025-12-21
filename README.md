@@ -6,7 +6,7 @@
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Phase%204%20Complete-brightgreen.svg)](docs/implementation_plan_todo.md)
+[![Status](https://img.shields.io/badge/Status-Phase%205%20Complete-brightgreen.svg)](docs/implementation_plan_todo.md)
 [![Build](https://img.shields.io/badge/Build-Passing-success.svg)](https://github.com/greysquirr3l/shadowforge)
 [![Coverage](https://img.shields.io/badge/Coverage-85%25+-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge)
 
@@ -38,12 +38,12 @@ with `K-of-N` threshold recovery.
 - Corruption detection and automatic recovery
 - Up to 50% redundancy for maximum fault tolerance
 
-### Steganography Techniques
+### Steganography Techniques (7/7 Complete)
 
-- **Image**: LSB, DCT (JPEG), Palette-based (GIF/PNG)
-- **Audio**: Phase encoding, Echo hiding, LSB audio
-- **Text**: Zero-width characters, whitespace manipulation
-- Capacity-aware embedding with statistical analysis
+- **Image**: LSB (PNG/BMP), DCT (JPEG), Palette (GIF/PNG) ✅
+- **Audio**: Phase encoding (DSSS), Echo hiding, LSB audio ✅
+- **Text**: Zero-width characters (Unicode ZWSP/ZWJ) ✅
+- Capacity-aware embedding with statistical analysis ✅
 
 ### Distribution Patterns
 
@@ -67,7 +67,7 @@ with `K-of-N` threshold recovery.
 - **Test Files**: 50+
 - **Test Coverage**: 85%+ (90%+ for crypto operations)
 - **Distribution Patterns**: 4 (all operational)
-- **Steganography Techniques**: 5/7 production-ready
+- **Steganography Techniques**: 7/7 (100% complete)
 - **CLI Binary Size**: 8.2MB (fully self-contained)
 
 ## 🏗️ Architecture
@@ -191,10 +191,19 @@ The steganographic image contains multiple layers of protection:
 making them invisible to human perception while maintaining the image's statistical properties
 to evade steganalysis detection.
 
-## �📦 Installation
+## 📚 Documentation
 
-**Status**: CLI application is functional with 5 production-ready steganography techniques and
-all 4 distribution patterns.
+Complete documentation available in [`docs/public/cli/`](docs/public/cli/):
+
+- **Getting Started**: [Installation](docs/public/cli/installation.md), [Getting Started Guide](docs/public/cli/getting-started.md), [Quick Reference](docs/public/cli/quick-reference.md)
+- **Commands**: Complete reference for all [8 command categories](docs/public/cli/commands/README.md)
+- **Guides**: [Advanced Usage](docs/public/cli/guides/advanced.md), [Security Hardening](docs/public/cli/guides/security.md)
+- **Reference**: [Glossary](docs/public/cli/glossary.md), [Use Cases](docs/public/cli/use-cases.md), [FAQ](docs/public/cli/faq.md)
+- **Help**: [Best Practices](docs/public/cli/best-practices.md), [Troubleshooting](docs/public/cli/troubleshooting.md), [Security](docs/public/cli/security.md)
+
+## 📦 Installation
+
+**Status**: CLI application is fully functional with 7 production-ready steganography techniques and all 4 distribution patterns.
 
 ### Prerequisites
 
@@ -331,7 +340,7 @@ curl -X POST http://localhost:8080/api/v1/embed \
 |-------|--------|-------------|
 | **Phase 1** | ✅ Complete | Foundation (DDD+CQRS architecture, 83 files) |
 | **Phase 2** | ✅ Complete | Core Domain (Crypto, Error Correction, Media) |
-| **Phase 3** | ✅ Complete | **ALL 7 steganography techniques production-ready** |
+| **Phase 3** | ✅ Complete | Steganography Techniques (all 7/7 production-ready) |
 | **Phase 4** | ✅ Complete | Distribution Patterns (all 4 patterns operational) |
 | **Phase 5** | ✅ Complete | CLI Application (fully functional, 8.2MB binary) |
 | **Phase 6** | ⏳ Future Item | REST API Server (Echo framework, deferred) |

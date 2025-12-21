@@ -1,12 +1,28 @@
-# Project-specific ignores
+# Project-specific ignores - Ignore first, then explicit allow
+
+# Ignore entire docs/ directory
+docs/
+
+# Explicitly allow public documentation
+!docs/public/
+!docs/public/cli/
+!docs/public/cli/**/*.md
+!docs/public/cli/commands/
+!docs/public/cli/commands/**/*.md
+!docs/public/cli/guides/
+!docs/public/cli/guides/**/*.md
+
+# Allow assets and distribution files
+!docs/assets/
+!docs/assets/**/*
+!docs/homebrew/
+!docs/homebrew/**/*
+
+# Ignore other directories
 .github/instructions/
 .github/copilot-instructions.md
 .github/copilot-instructions.md.bak
 .vscode/
-docs/dev
-docs/architecture.md
-docs/implementation_plan_todo.md
-docs/VERSION_INTEGRATION.md
 .mcp.json
 INITIAL_PROMPT.md
 .env
@@ -14,7 +30,6 @@ INITIAL_PROMPT.md
 test_output.txt
 .serena/
 pexels_api.txt
-docs/development/
 .venv/
 
 # Go build artifacts
