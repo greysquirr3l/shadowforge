@@ -365,7 +365,9 @@ func TestMediaAsset_Validate(t *testing.T) {
 			setupAsset: func() *media.MediaAsset {
 				asset, _ := media.NewMediaAsset(media.NewAssetID(), media.MediaTypeImage, media.FormatPNG, []byte("data"))
 				dims, _ := media.NewDimensions(100, 100)
-				asset.SetDimensions(dims)
+				if err := asset.SetDimensions(dims); err != nil {
+					panic(err)
+				}
 				return asset
 			},
 			expectedErr: nil,
@@ -375,7 +377,9 @@ func TestMediaAsset_Validate(t *testing.T) {
 			setupAsset: func() *media.MediaAsset {
 				asset, _ := media.NewMediaAsset(media.NewAssetID(), media.MediaTypeAudio, media.FormatWAV, []byte("data"))
 				sr, _ := media.NewSampleRate(44100, 16, 2)
-				asset.SetSampleRate(sr)
+				if err := asset.SetSampleRate(sr); err != nil {
+					panic(err)
+				}
 				return asset
 			},
 			expectedErr: nil,

@@ -133,7 +133,7 @@ func (h *ZIPHandler) Create(archiveEntry *archive.Archive, outputPath string) er
 				Name:   entry.Path + "/",
 				Method: zip.Deflate,
 			}
-			header.SetModTime(entry.ModifiedAt)
+			header.Modified = entry.ModifiedAt
 
 			if _, err := writer.CreateHeader(header); err != nil {
 				return fmt.Errorf("failed to create directory header: %w", err)
@@ -154,7 +154,7 @@ func (h *ZIPHandler) Create(archiveEntry *archive.Archive, outputPath string) er
 				Name:   entry.Path,
 				Method: zip.Deflate,
 			}
-			header.SetModTime(entry.ModifiedAt)
+			header.Modified = entry.ModifiedAt
 
 			// Write file content
 			fileWriter, err := writer.CreateHeader(header)
@@ -266,7 +266,7 @@ func (h *ZIPHandler) extractFile(file *zip.File, outputDir string) (*archive.Arc
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to open file in archive: %w", err)
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	// Read file content with size limit
 	var content []byte

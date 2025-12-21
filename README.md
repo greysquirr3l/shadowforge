@@ -4,11 +4,11 @@
 
 > **"Forge secrets in the shadows, shield them from quantum eyes"**
 
-[![Go Version](https://img.shields.io/badge/Go-1.25+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-Phase%204%20Complete-brightgreen.svg)](docs/implementation_plan_todo.md)
-[![Build](https://img.shields.io/badge/Build-Passing-success.svg)]()
-[![Coverage](https://img.shields.io/badge/Coverage-85%25+-brightgreen.svg)]()
+[![Build](https://img.shields.io/badge/Build-Passing-success.svg)](https://github.com/greysquirr3l/shadowforge)
+[![Coverage](https://img.shields.io/badge/Coverage-85%25+-brightgreen.svg)](https://github.com/greysquirr3l/shadowforge)
 
 **Shadowforge** is a production-grade quantum-resistant steganography tool that combines
 NIST-approved post-quantum cryptography, Reed-Solomon error correction, and multiple
@@ -259,9 +259,54 @@ shadowforge extract \
 
 # Analyze capacity
 shadowforge analyze capacity --cover image.png --technique lsb
+
+# Forensic watermarking (PNG directories)
+# Works for KaTeX formula PNGs, or PDF pages rendered to PNG.
+# Note: encryption + signature are enabled by default.
+shadowforge watermark embed \
+  --recipient "Jane Smith <jane@corp.com>" \
+  --gpg-key ./keys/jane-key.pub \
+  --input-dir ./formulas \
+  --output-dir ./watermarked \
+  --receipt ./watermark-receipt.md
+
+# Extract (decrypt) the watermark (requires the same receipt)
+shadowforge watermark extract \
+  --input-dir ./watermarked \
+  --output ./recovered-watermark.json \
+  --receipt ./watermark-receipt.md
+
+# Verify authenticity + expected values (requires receipt)
+shadowforge watermark verify \
+  --input-dir ./watermarked \
+  --expected-recipient "Jane Smith" \
+  --gpg-key ./keys/jane-key.pub \
+  --receipt ./watermark-receipt.md
 ```
 
+### Forensic Watermarking (Receipts)
+
+Shadowforge can embed a **forensic watermark** across a directory of PNG images.
+If your source is a PDF, the intended workflow is: render PDF pages to PNG → watermark the PNGs → rebuild the PDF.
+By default, watermark payloads are:
+
+- **Encrypted** (Kyber-1024 + symmetric encryption)
+- **Signed** (Dilithium3)
+- **Distributed** across images with Reed-Solomon error correction
+
+When encryption is enabled (default), pass `--receipt` during `watermark embed` to write a
+Markdown receipt containing the per-watermark decryption key material.
+
+- Treat the receipt like a **private key**.
+- Without the receipt, you **cannot decrypt** or fully verify encrypted watermarks later.
+
+For complete details and troubleshooting, see `internal/domain/watermark/README.md`.
+
 ### Planned API Usage
+
+> Note: The REST API server is a future item. We’re prioritizing a CLI-first release and
+have temporarily deferred API work until after distribution prep. Releases are manual-only
+for now; the endpoints below illustrate the forthcoming server.
 
 ```bash
 # Start API server
@@ -280,7 +325,7 @@ curl -X POST http://localhost:8080/api/v1/embed \
 
 ## 📊 Development Status
 
-### Current Phase: **Phase 5 Complete - Ready for API Server (Phase 6)**
+### Current Phase: **Phase 5 Complete — API deferred (future item); CI/CD + Homebrew prep underway**
 
 | Phase | Status | Description |
 |-------|--------|-------------|
@@ -289,10 +334,12 @@ curl -X POST http://localhost:8080/api/v1/embed \
 | **Phase 3** | ✅ Complete | **ALL 7 steganography techniques production-ready** |
 | **Phase 4** | ✅ Complete | Distribution Patterns (all 4 patterns operational) |
 | **Phase 5** | ✅ Complete | CLI Application (fully functional, 8.2MB binary) |
-| **Phase 6** | 🚧 Next | REST API Server (Echo framework) |
+| **Phase 6** | ⏳ Future Item | REST API Server (Echo framework, deferred) |
 | **Phase 7** | ⏳ Planned | Security Hardening (audit, penetration testing) |
-| **Phase 8** | ⏳ Planned | Testing & Documentation (E2E tests) |
-| **Phase 9** | ⏳ Planned | Production Readiness (CI/CD, deployment) |
+| **Phase 8** | 🚧 In Progress | CI/CD prep (manual-only release workflow), Homebrew formula/docs |
+| **Phase 9** | ⏳ Planned | Production Readiness (final hardening and deployment) |
+
+Note: API is deferred; focus is on finalizing CI/CD and Homebrew distribution with manual-only releases.
 
 ### Recent Achievements (December 2025)
 
@@ -324,9 +371,6 @@ curl -X POST http://localhost:8080/api/v1/embed \
 - ✅ Commands: embed, extract, analyze, keygen, formats, archive
 - ✅ All 7 steganography techniques operational
 - ✅ All 4 distribution patterns working
-
-See [docs/implementation_plan_todo.md](docs/implementation_plan_todo.md) and
-[docs/development/PHASE_4_COMPLETION.md](docs/development/PHASE_4_COMPLETION.md) for detailed progress.
 
 ## 🧪 Testing
 
@@ -467,7 +511,7 @@ and security purposes only. Always comply with applicable laws and regulations.
 ## 🔗 Links
 
 - **GitHub**: <https://github.com/greysquirr3l/shadowforge>
-- **Documentation**: [docs/](docs/)
+- **Documentation**: [docs/architecture.md](docs/architecture.md)
 - **Issues**: <https://github.com/greysquirr3l/shadowforge/issues>
 
 ---

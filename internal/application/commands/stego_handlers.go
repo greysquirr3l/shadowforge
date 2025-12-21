@@ -80,7 +80,7 @@ func (h *EmbedHandler) Handle(ctx context.Context, cmd EmbedCommand) (*EmbedResu
 	}
 
 	// Encrypt payload if password provided
-	var processedPayload []byte = payload
+	processedPayload := payload
 	var encryptionUsed bool
 	if cmd.Password != "" {
 		// Derive encryption key from password
@@ -258,7 +258,7 @@ func (h *ExtractHandler) Handle(ctx context.Context, cmd ExtractCommand) (*Extra
 		return nil, fmt.Errorf("failed to extract payload: %w", err)
 	}
 
-	var processedPayload []byte = extractedPayload
+	processedPayload := extractedPayload
 	var decryptionUsed, decompressionUsed bool
 
 	// NOTE: Reed-Solomon decoding would require shard metadata
@@ -458,30 +458,6 @@ func (h *AnalyzeCapacityHandler) analyzeTechnique(ctx context.Context, coverData
 	result.PerformanceScore = 0.9  // Placeholder
 
 	return result
-}
-
-// getSupportedTechniques returns supported techniques for a media type.
-func (h *AnalyzeCapacityHandler) getSupportedTechniques(mediaType media.MediaType) []stego.StegoTechnique {
-	switch mediaType {
-	case media.MediaTypeImage:
-		return []stego.StegoTechnique{
-			stego.LSB,
-			stego.DCT,
-			stego.Palette,
-		}
-	case media.MediaTypeAudio:
-		return []stego.StegoTechnique{
-			stego.PhaseEncoding,
-			stego.EchoHiding,
-			stego.LSB, // LSB works for audio samples too
-		}
-	case media.MediaTypeText:
-		return []stego.StegoTechnique{
-			stego.ZeroWidth,
-		}
-	default:
-		return []stego.StegoTechnique{}
-	}
 }
 
 // generateRecommendations creates capacity recommendations based on analysis.

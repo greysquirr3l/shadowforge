@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build artifacts
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: amd64
+          - runner: ubuntu-latest
+            goos: linux
+            goarch: arm64
+          - runner: macos-latest
+            goos: darwin
+            goarch: amd64
+          - runner: macos-latest
+            goos: darwin
+            goarch: arm64
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          set -euo pipefail
+
+          tag="${GITHUB_REF_NAME}"
+          version="${tag#v}"
+
+          mkdir -p dist
+
+          git_commit="$(git rev-parse --short HEAD)"
+          build_time="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+          ldflags="-s -w \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.GitCommit=${git_commit}' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.GitTag=${tag}' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.GitBranch=release' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.GitDirty=false' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.BuildTime=${build_time}' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.BuildUser=github-actions' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.BuildHost=github-actions' \
+            -X 'github.com/greysquirr3l/shadowforge/pkg/version.CGOEnabled=0'"
+
+          outdir="dist/shadowforge_${version}_${GOOS}_${GOARCH}"
+          mkdir -p "${outdir}"
+
+          go build -trimpath -ldflags "${ldflags}" -o "${outdir}/shadowforge" ./cmd/cli
+
+          cp LICENSE "${outdir}/LICENSE"
+          cp README.md "${outdir}/README.md"
+
+          (cd dist && tar -czf "shadowforge_${version}_${GOOS}_${GOARCH}.tar.gz" "shadowforge_${version}_${GOOS}_${GOARCH}")
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: shadowforge_${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Create release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum *.tar.gz > checksums.txt)
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.tar.gz
+            dist/checksums.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

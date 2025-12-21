@@ -628,11 +628,7 @@ func (h *EmbedMatrixHandler) allocateBalanced(
 				shard.ShardIndex, shard.PayloadName)
 		}
 
-		allocatedShard := AllocatedShard{
-			PayloadName: shard.PayloadName,
-			ShardIndex:  shard.ShardIndex,
-			Size:        shard.Size,
-		}
+		allocatedShard := AllocatedShard(shard)
 
 		bestCover.Shards = append(bestCover.Shards, allocatedShard)
 		bestCover.TotalSize += shard.Size
@@ -992,7 +988,9 @@ func (h *ExtractMatrixHandler) Handle(ctx context.Context, cmd ExtractMatrixComm
 	// Reconstruct payloads
 	h.logger.Info("Reconstructing payloads from collected shards")
 
-	os.MkdirAll(cmd.OutputDir, 0755)
+	if err := os.MkdirAll(cmd.OutputDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
 
 	outputFiles := make([]string, 0)
 	recoveryStatus := make(map[string]RecoveryStatus)
@@ -1224,7 +1222,7 @@ func (h *ExtractMatrixHandler) decompressData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	var buffer bytes.Buffer
 	if _, err := io.Copy(&buffer, reader); err != nil {

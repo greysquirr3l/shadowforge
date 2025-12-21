@@ -357,11 +357,12 @@ func (f *FormatDetector) parseJPEGInfo(data []byte) (*ImageInfo, error) {
 			components := int(data[i+9])
 
 			colorSpace := media.ColorSpaceRGB
-			if components == 1 {
+			switch components {
+			case 1:
 				colorSpace = media.ColorSpaceGray
-			} else if components == 3 {
+			case 3:
 				colorSpace = media.ColorSpaceYCbCr
-			} else if components == 4 {
+			case 4:
 				colorSpace = media.ColorSpaceCMYK
 			}
 
@@ -645,7 +646,6 @@ func (f *FormatDetector) parseMP3Info(data []byte) (*AudioInfo, error) {
 		if data[offset] == 0xFF && (data[offset+1]&0xE0) == 0xE0 {
 			// Found frame sync
 			version := (data[offset+1] >> 3) & 0x03
-			layer := (data[offset+1] >> 1) & 0x03
 			sampleRateIdx := (data[offset+2] >> 2) & 0x03
 			channelMode := (data[offset+3] >> 6) & 0x03
 
@@ -669,11 +669,6 @@ func (f *FormatDetector) parseMP3Info(data []byte) (*AudioInfo, error) {
 
 			// MP3 is always 16-bit output (internally)
 			bitDepth := 16
-
-			// Layer III is the most common (layer = 1 means Layer III)
-			if layer != 1 {
-				// Could be Layer I or II, which is unusual
-			}
 
 			return &AudioInfo{
 				Format:     media.FormatMP3,

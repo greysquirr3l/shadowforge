@@ -354,9 +354,10 @@ func (p *TextProcessor) ExtractZeroWidth(stegoText string) ([]byte, error) {
 
 	// Extract zero-width characters
 	for _, char := range stegoText {
-		if char == ZWSP {
+		switch char {
+		case ZWSP:
 			bits = append(bits, 0)
-		} else if char == ZWJ {
+		case ZWJ:
 			bits = append(bits, 1)
 		}
 		// Ignore other characters (including ZWNJ for now)

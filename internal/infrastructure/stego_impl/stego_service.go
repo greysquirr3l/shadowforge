@@ -111,9 +111,9 @@ func (s *StegoService) Extract(ctx context.Context, stegoMedia []byte, technique
 	switch technique {
 	case stego.LSB:
 		// Detect format to route to correct LSB implementation
-		format, err := s.mediaService.DetectFormat(ctx, stegoMedia)
-		if err != nil {
-			return nil, fmt.Errorf("format detection failed: %w", err)
+		format, detectErr := s.mediaService.DetectFormat(ctx, stegoMedia)
+		if detectErr != nil {
+			return nil, fmt.Errorf("format detection failed: %w", detectErr)
 		}
 		payload, err = s.extractLSB(stegoMedia, format)
 	case stego.DCT:

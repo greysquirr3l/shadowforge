@@ -103,7 +103,7 @@ func TestReconstructionSession_UpdateProgress_InvalidAboveOne(t *testing.T) {
 func TestReconstructionSession_Complete_Success(t *testing.T) {
 	session, _ := NewReconstructionSession("strategy-123", "manifest-456", []int{0, 1, 2})
 	strategy, _ := NewRecoveryStrategy(AlgorithmReedSolomon, nil, 10)
-	session.StartReconstruction(strategy)
+	require.NoError(t, session.StartReconstruction(strategy))
 
 	err := session.Complete()
 
@@ -124,7 +124,7 @@ func TestReconstructionSession_Complete_NotInProgress(t *testing.T) {
 func TestReconstructionSession_MarkPartialRecovery_Success(t *testing.T) {
 	session, _ := NewReconstructionSession("strategy-123", "manifest-456", []int{0, 1, 2})
 	strategy, _ := NewRecoveryStrategy(AlgorithmReedSolomon, nil, 10)
-	session.StartReconstruction(strategy)
+	require.NoError(t, session.StartReconstruction(strategy))
 
 	err := session.MarkPartialRecovery()
 
@@ -144,7 +144,7 @@ func TestReconstructionSession_MarkPartialRecovery_NotInProgress(t *testing.T) {
 func TestReconstructionSession_Fail_Success(t *testing.T) {
 	session, _ := NewReconstructionSession("strategy-123", "manifest-456", []int{0, 1, 2})
 	strategy, _ := NewRecoveryStrategy(AlgorithmReedSolomon, nil, 10)
-	session.StartReconstruction(strategy)
+	require.NoError(t, session.StartReconstruction(strategy))
 
 	err := session.Fail("Insufficient shards")
 

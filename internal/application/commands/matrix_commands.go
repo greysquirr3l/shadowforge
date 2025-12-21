@@ -130,10 +130,7 @@ func (c EmbedMatrixCommand) Validate() error {
 		return errors.New("minimum redundancy must be between 0.0 and 1.0")
 	}
 
-	// Recommended: At least 20% redundancy for matrix operations
-	if c.RSRedundancy < 0.2 {
-		// Warning: low redundancy, but still valid
-	}
+	// Note: Redundancy < 20% is allowed but may reduce recoverability.
 
 	return nil
 }

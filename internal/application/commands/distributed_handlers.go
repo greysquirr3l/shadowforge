@@ -77,7 +77,7 @@ func (h *EmbedDistributedHandler) Handle(ctx context.Context, cmd EmbedDistribut
 	h.logger.WithField("payload_size", len(payload)).Info("Payload loaded")
 
 	// Encrypt payload if password provided
-	var processedPayload []byte = payload
+	processedPayload := payload
 	var encryptionUsed bool
 	if cmd.Password != "" {
 		encryptionKey, err := h.cryptoService.DeriveKey(ctx, cmd.Password, nil)

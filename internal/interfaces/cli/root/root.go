@@ -87,12 +87,24 @@ Available aliases: shadowforge, sforge`, appDesc, appName),
 		return nil, fmt.Errorf("failed to create archive commands: %w", err)
 	}
 
+	// Create watermark commands
+	watermarkCommands, err := commands.NewWatermarkCommands(container.WatermarkService, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create watermark commands: %w", err)
+	}
+
 	// Add all command groups
 	rootCmd.AddCommand(embedCommands...)
 	rootCmd.AddCommand(extractCommands...)
 	rootCmd.AddCommand(analyzeCommands...)
 	rootCmd.AddCommand(utilityCommands...)
 	rootCmd.AddCommand(archiveCommands...)
+	rootCmd.AddCommand(watermarkCommands...)
+	rootCmd.AddCommand(commands.NewChainCommand(
+		container.CreateChainHandler,
+		container.ExecuteChainHandler,
+		container.ReverseChainHandler,
+	))
 
 	// Add version command
 	rootCmd.AddCommand(newVersionCommand())
@@ -111,20 +123,6 @@ func newVersionCommand() *cobra.Command {
 			fmt.Printf("Go version: %s\n", version.GetBuildInfo().GoVersion)
 			fmt.Printf("Git commit: %s\n", version.GetGitCommit())
 			fmt.Printf("Build date: %s\n", version.GetBuildTime())
-			fmt.Println()
-			fmt.Println("Supported techniques:")
-			fmt.Println("  • LSB Image (PNG, BMP)")
-			fmt.Println("  • DCT JPEG")
-			fmt.Println("  • Audio Phase (WAV)")
-			fmt.Println("  • Audio Echo (WAV)")
-			fmt.Println("  • Audio LSB (WAV)")
-			fmt.Println("  • Text Zero-Width (TXT, MD)")
-			fmt.Println("  • Palette (GIF, PNG indexed)")
-			fmt.Println()
-			fmt.Println("Security:")
-			fmt.Println("  • Post-Quantum Cryptography: Kyber-1024, Dilithium3")
-			fmt.Println("  • Reed-Solomon Error Correction")
-			fmt.Println("  • Secure memory handling")
 		},
 	}
 }

@@ -183,13 +183,7 @@ func (s *ManifestSerializer) computeHMAC(data []byte) string {
 func (s *ManifestSerializer) toJSON(manifest *ShardManifest) *manifestJSON {
 	shards := make([]shardMetadataJSON, len(manifest.ShardMetadata))
 	for i, shard := range manifest.ShardMetadata {
-		shards[i] = shardMetadataJSON{
-			Index:       shard.Index,
-			Size:        shard.Size,
-			Checksum:    shard.Checksum,
-			MediaID:     shard.MediaID,
-			RecipientID: shard.RecipientID,
-		}
+		shards[i] = shardMetadataJSON(shard)
 	}
 
 	var expiresAt *string

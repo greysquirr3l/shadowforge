@@ -219,14 +219,14 @@ func TestMemoryRepository_Clear(t *testing.T) {
 		Data:      []byte("data"),
 		Algorithm: domain_crypto.Kyber1024,
 	}
-	repo.SavePayload(ctx, payload)
+	require.NoError(t, repo.SavePayload(ctx, payload))
 
 	keyPair := &domain_crypto.KeyPair{
 		PublicKey:  []byte("public"),
 		PrivateKey: []byte("private"),
 		Algorithm:  domain_crypto.Kyber1024,
 	}
-	repo.SaveKeyPair(ctx, keyPair)
+	require.NoError(t, repo.SaveKeyPair(ctx, keyPair))
 
 	assert.Equal(t, 1, repo.PayloadCount())
 	assert.Equal(t, 1, repo.KeyPairCount())
@@ -294,7 +294,7 @@ func TestMemoryRepository_ConcurrentKeyPairAccess(t *testing.T) {
 			PrivateKey: []byte("private-" + algo.String()),
 			Algorithm:  algo,
 		}
-		repo.SaveKeyPair(ctx, keyPair)
+		require.NoError(t, repo.SaveKeyPair(ctx, keyPair))
 	}
 
 	const goroutines = 10

@@ -103,6 +103,17 @@ tmp/
 secrets/
 credentials/
 
+# Watermark receipts (sensitive key material)
+receipts/
+**/*receipt*.md
+**/*receipt*.json
+**/*reciept*.md
+**/*reciept*.json
+
+# Project binaries (defense-in-depth; primary outputs are already under bin/)
+shadowforge
+shadowforge-api
+
 # Database files
 *.db
 *.sqlite
@@ -168,3 +179,8 @@ docs/.doctrees/
 site/
 
 examples/
+bin/shadowforge
+internal/pkg/jpegdct
+signing-key.pub
+test_katex_document.md
+docs/watermark_run_2025-12-20_cwheeler.md

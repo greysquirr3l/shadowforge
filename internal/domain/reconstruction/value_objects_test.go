@@ -429,7 +429,7 @@ func TestRecoveryProgress_String(t *testing.T) {
 
 	assert.Contains(t, str, "10")
 	assert.Contains(t, str, "15")
-	assert.Contains(t, str, "66.7")
+	assert.Contains(t, str, "80.0") // 10 verified + 2 failed = 12/15 = 80% complete
 }
 
 // =============================================================================

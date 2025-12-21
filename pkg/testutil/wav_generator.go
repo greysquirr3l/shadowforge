@@ -111,7 +111,9 @@ func generateWAVWithSamples(sampleRate, bitDepth, channels, numSamples int) []by
 	}
 
 	var buf bytes.Buffer
-	binary.Write(&buf, binary.LittleEndian, &header)
+	if err := binary.Write(&buf, binary.LittleEndian, &header); err != nil {
+		return nil
+	}
 
 	// Use deterministic seed for reproducible tests
 	rng := rand.New(rand.NewSource(42))
@@ -140,7 +142,9 @@ func generateWAVWithSamples(sampleRate, bitDepth, channels, numSamples int) []by
 			case 16:
 				// 16-bit signed (-32768 to 32767)
 				value := int16(sampleValue * 32767)
-				binary.Write(&buf, binary.LittleEndian, value)
+				if err := binary.Write(&buf, binary.LittleEndian, value); err != nil {
+					return nil
+				}
 			case 24:
 				// 24-bit signed
 				value := int32(sampleValue * 8388607) // 2^23 - 1
@@ -150,7 +154,9 @@ func generateWAVWithSamples(sampleRate, bitDepth, channels, numSamples int) []by
 			case 32:
 				// 32-bit signed
 				value := int32(sampleValue * 2147483647)
-				binary.Write(&buf, binary.LittleEndian, value)
+				if err := binary.Write(&buf, binary.LittleEndian, value); err != nil {
+					return nil
+				}
 			}
 		}
 	}

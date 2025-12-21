@@ -157,10 +157,9 @@ func (h *TARHandler) Create(archiveEntry *archive.Archive, outputPath string) er
 	if err != nil {
 		return fmt.Errorf("failed to create writer: %w", err)
 	}
-	defer closeFunc()
+	defer func() { _ = closeFunc() }()
 
 	tarWriter := tar.NewWriter(writer)
-	defer tarWriter.Close()
 
 	// Add files to archive
 	var totalSize int64
@@ -316,7 +315,7 @@ func (h *TARHandler) extractFile(tarReader *tar.Reader, header *tar.Header, outp
 		// Directory entry
 		content = nil
 
-	case tar.TypeReg, tar.TypeRegA:
+	case tar.TypeReg:
 		// Regular file
 		content, err = io.ReadAll(io.LimitReader(tarReader, h.maxFileSize))
 		if err != nil {

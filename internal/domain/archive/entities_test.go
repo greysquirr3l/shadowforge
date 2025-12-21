@@ -133,7 +133,7 @@ func TestArchive_Validate_Success(t *testing.T) {
 	// Arrange
 	archive, _ := NewArchive(FormatZIP, CompressionDefault)
 	entry, _ := NewArchiveEntry(archive.ID, "test.txt", "test.txt", TypeText, 1024)
-	archive.AddEntry(entry)
+	require.NoError(t, archive.AddEntry(entry))
 
 	// Act
 	err := archive.Validate()
@@ -159,7 +159,7 @@ func TestArchive_Validate_InvalidFormat(t *testing.T) {
 	archive, _ := NewArchive(FormatZIP, CompressionDefault)
 	archive.Format = ArchiveFormat("invalid")
 	entry, _ := NewArchiveEntry(archive.ID, "test.txt", "test.txt", TypeText, 1024)
-	archive.AddEntry(entry)
+	require.NoError(t, archive.AddEntry(entry))
 
 	err := archive.Validate()
 
@@ -177,7 +177,7 @@ func TestArchive_Validate_Empty(t *testing.T) {
 func TestArchive_Validate_Corrupted(t *testing.T) {
 	archive, _ := NewArchive(FormatZIP, CompressionDefault)
 	entry, _ := NewArchiveEntry(archive.ID, "test.txt", "test.txt", TypeText, 1024)
-	archive.AddEntry(entry)
+	require.NoError(t, archive.AddEntry(entry))
 	archive.TotalSize = 0 // Corrupt the size
 
 	err := archive.Validate()
@@ -190,8 +190,8 @@ func TestArchive_GetEntry_Success(t *testing.T) {
 	archive, _ := NewArchive(FormatZIP, CompressionDefault)
 	entry1, _ := NewArchiveEntry(archive.ID, "file1.txt", "file1.txt", TypeText, 1024)
 	entry2, _ := NewArchiveEntry(archive.ID, "file2.txt", "file2.txt", TypeText, 2048)
-	archive.AddEntry(entry1)
-	archive.AddEntry(entry2)
+	require.NoError(t, archive.AddEntry(entry1))
+	require.NoError(t, archive.AddEntry(entry2))
 
 	// Act
 	found, err := archive.GetEntry(entry2.ID)
@@ -218,9 +218,9 @@ func TestArchive_GetEntries_ReturnsAll(t *testing.T) {
 	entry1, _ := NewArchiveEntry(archive.ID, "file1.txt", "file1.txt", TypeText, 1024)
 	entry2, _ := NewArchiveEntry(archive.ID, "file2.txt", "file2.txt", TypeText, 2048)
 	entry3, _ := NewArchiveEntry(archive.ID, "file3.txt", "file3.txt", TypeText, 4096)
-	archive.AddEntry(entry1)
-	archive.AddEntry(entry2)
-	archive.AddEntry(entry3)
+	require.NoError(t, archive.AddEntry(entry1))
+	require.NoError(t, archive.AddEntry(entry2))
+	require.NoError(t, archive.AddEntry(entry3))
 
 	// Act
 	entries := archive.GetEntries()

@@ -39,7 +39,9 @@ func createMinimalWAV(sampleRate, bitDepth, channels, numSamples int) []byte {
 	}
 
 	var buf bytes.Buffer
-	binary.Write(&buf, binary.LittleEndian, &header)
+	if err := binary.Write(&buf, binary.LittleEndian, &header); err != nil {
+		panic(err)
+	}
 
 	// Write silent samples
 	for i := 0; i < numSamples*channels; i++ {
@@ -47,11 +49,15 @@ func createMinimalWAV(sampleRate, bitDepth, channels, numSamples int) []byte {
 		case 8:
 			buf.WriteByte(128) // Silence for 8-bit unsigned
 		case 16:
-			binary.Write(&buf, binary.LittleEndian, int16(0))
+			if err := binary.Write(&buf, binary.LittleEndian, int16(0)); err != nil {
+				panic(err)
+			}
 		case 24:
 			buf.Write([]byte{0, 0, 0})
 		case 32:
-			binary.Write(&buf, binary.LittleEndian, int32(0))
+			if err := binary.Write(&buf, binary.LittleEndian, int32(0)); err != nil {
+				panic(err)
+			}
 		}
 	}
 

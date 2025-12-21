@@ -2,9 +2,6 @@ package commands
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -398,17 +395,6 @@ type DistributionConfig struct {
 	MaxUtilization float64
 }
 
-// computeManifestHash computes SHA-256 hash of manifest content
-func (v *DistributionValidator) computeManifestHash(manifest *MatrixManifest) string {
-	// Create copy without integrity hash for hashing
-	manifestCopy := *manifest
-	manifestCopy.IntegrityHash = ""
-
-	data, _ := json.Marshal(manifestCopy)
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:])
-}
-
 // ValidateCapacity checks if available capacity is sufficient
 func (v *DistributionValidator) ValidateCapacity(ctx context.Context, payloadSizes []int64, covers []CoverCapacityInfo, rsRedundancy float64) ValidationResult {
 	result := ValidationResult{
@@ -451,9 +437,7 @@ func (v *DistributionValidator) ValidateCapacity(ctx context.Context, payloadSiz
 
 	// Check 3: Warnings from capacity analysis
 	if len(analysis.Warnings) > 0 {
-		for _, warning := range analysis.Warnings {
-			result.Warnings = append(result.Warnings, warning)
-		}
+		result.Warnings = append(result.Warnings, analysis.Warnings...)
 	}
 	result.ChecksPassed++
 

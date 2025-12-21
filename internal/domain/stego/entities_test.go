@@ -81,7 +81,7 @@ func TestStegoContainer_Embed_Success(t *testing.T) {
 	coverMedia := []byte("test cover media with sufficient space")
 	technique := LSB
 	container, _ := NewStegoContainer(id, coverMedia, technique)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 
 	data := []byte("secret payload")
 	embeddingMap := []int{1, 5, 10, 15, 20}
@@ -104,7 +104,7 @@ func TestStegoContainer_Embed_EmptyPayload(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, PhaseEncoding)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 
 	data := []byte{} // Empty
 	embeddingMap := []int{}
@@ -123,8 +123,8 @@ func TestStegoContainer_Embed_AlreadyEmbedded(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, EchoHiding)
-	container.SetCapacity(100)
-	container.Embed([]byte("first payload"), []int{1, 2, 3})
+	require.NoError(t, container.SetCapacity(100))
+	require.NoError(t, container.Embed([]byte("first payload"), []int{1, 2, 3}))
 
 	// Act
 	err := container.Embed([]byte("second payload"), []int{4, 5, 6})
@@ -140,7 +140,7 @@ func TestStegoContainer_Embed_CapacityExceeded(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("small cover")
 	container, _ := NewStegoContainer(id, coverMedia, ZeroWidth)
-	container.SetCapacity(5) // Small capacity
+	require.NoError(t, container.SetCapacity(5)) // Small capacity
 
 	data := []byte("this is a very large payload exceeding capacity")
 
@@ -158,9 +158,9 @@ func TestStegoContainer_Extract_Success(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, Palette)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 	expectedData := []byte("hidden message")
-	container.Embed(expectedData, []int{1, 2, 3})
+	require.NoError(t, container.Embed(expectedData, []int{1, 2, 3}))
 
 	// Act
 	extracted, err := container.Extract()
@@ -233,8 +233,8 @@ func TestStegoContainer_RemainingCapacity(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, PhaseEncoding)
-	container.SetCapacity(100)
-	container.Embed([]byte("secret"), []int{1, 2, 3}) // 6 bytes used
+	require.NoError(t, container.SetCapacity(100))
+	require.NoError(t, container.Embed([]byte("secret"), []int{1, 2, 3})) // 6 bytes used
 
 	// Act
 	remaining := container.RemainingCapacity()
@@ -249,7 +249,7 @@ func TestStegoContainer_CanEmbed_Success(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, EchoHiding)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 
 	// Act
 	canEmbed := container.CanEmbed(50)
@@ -264,7 +264,7 @@ func TestStegoContainer_CanEmbed_ExceedsCapacity(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, ZeroWidth)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 
 	// Act
 	canEmbed := container.CanEmbed(150)
@@ -279,8 +279,8 @@ func TestStegoContainer_CanEmbed_AlreadyEmbedded(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, Palette)
-	container.SetCapacity(100)
-	container.Embed([]byte("data"), []int{1, 2})
+	require.NoError(t, container.SetCapacity(100))
+	require.NoError(t, container.Embed([]byte("data"), []int{1, 2}))
 
 	// Act
 	canEmbed := container.CanEmbed(10)
@@ -326,7 +326,7 @@ func TestStegoContainer_Validate_Success(t *testing.T) {
 	id := GenerateContainerID()
 	coverMedia := []byte("test cover media")
 	container, _ := NewStegoContainer(id, coverMedia, LSB)
-	container.SetCapacity(100)
+	require.NoError(t, container.SetCapacity(100))
 
 	// Act
 	err := container.Validate()

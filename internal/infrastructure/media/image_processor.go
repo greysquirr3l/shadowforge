@@ -2,7 +2,6 @@ package media
 
 import (
 	"bytes"
-	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -151,9 +150,10 @@ func (p *ImageProcessor) CalculateCapacity(data []byte, technique string) (*medi
 		// LSB: 1 bit per color channel per pixel
 		// For RGB: 3 bits per pixel, for RGBA: 4 bits per pixel
 		bitsPerPixel := int64(3) // Default RGB
-		if info.ColorSpace == media.ColorSpaceRGBA {
+		switch info.ColorSpace {
+		case media.ColorSpaceRGBA:
 			bitsPerPixel = 4
-		} else if info.ColorSpace == media.ColorSpaceGray {
+		case media.ColorSpaceGray:
 			bitsPerPixel = 1
 		}
 
@@ -388,15 +388,6 @@ func (p *ImageProcessor) validateJPEG(data []byte) error {
 		return ErrCorruptedHeader
 	}
 
-	// Check for EOI marker at end (0xFF 0xD9)
-	if len(data) >= 2 {
-		endIdx := len(data) - 2
-		if data[endIdx] != 0xFF || data[endIdx+1] != 0xD9 {
-			// EOI not required to be at absolute end, just should exist
-			// This is a warning, not an error
-		}
-	}
-
 	return nil
 }
 
@@ -424,12 +415,6 @@ func (p *ImageProcessor) validateBMP(data []byte) error {
 	// Check BM signature
 	if data[0] != 'B' || data[1] != 'M' {
 		return ErrCorruptedHeader
-	}
-
-	// Check file size matches
-	fileSize := binary.LittleEndian.Uint32(data[2:6])
-	if uint32(len(data)) != fileSize {
-		// Size mismatch - warning but not fatal
 	}
 
 	return nil

@@ -2,10 +2,11 @@ package stego
 
 import (
 	"context"
-	"github.com/sirupsen/logrus"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

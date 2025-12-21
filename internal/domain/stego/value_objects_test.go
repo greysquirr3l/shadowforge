@@ -260,7 +260,7 @@ func TestCapacity_Reserve_Success(t *testing.T) {
 func TestCapacity_Reserve_ExceedsAvailable(t *testing.T) {
 	// Arrange
 	capacity, _ := NewCapacity(1000)
-	capacity.Reserve(800)
+	require.NoError(t, capacity.Reserve(800))
 
 	// Act
 	err := capacity.Reserve(300) // Would exceed capacity
@@ -275,7 +275,7 @@ func TestCapacity_Reserve_ExceedsAvailable(t *testing.T) {
 func TestCapacity_Release_Success(t *testing.T) {
 	// Arrange
 	capacity, _ := NewCapacity(1000)
-	capacity.Reserve(500)
+	require.NoError(t, capacity.Reserve(500))
 
 	// Act
 	err := capacity.Release(200)
@@ -290,7 +290,7 @@ func TestCapacity_Release_Success(t *testing.T) {
 func TestCapacity_Release_ExceedsUsed(t *testing.T) {
 	// Arrange
 	capacity, _ := NewCapacity(1000)
-	capacity.Reserve(300)
+	require.NoError(t, capacity.Reserve(300))
 
 	// Act
 	err := capacity.Release(500) // More than used
@@ -320,7 +320,7 @@ func TestCapacity_UtilizationPercentage(t *testing.T) {
 			// Arrange
 			capacity, _ := NewCapacity(tt.total)
 			if tt.used > 0 {
-				capacity.Reserve(tt.used)
+				require.NoError(t, capacity.Reserve(tt.used))
 			}
 
 			// Act
@@ -352,7 +352,7 @@ func TestCapacity_CanFit(t *testing.T) {
 			// Arrange
 			capacity, _ := NewCapacity(tt.total)
 			if tt.used > 0 {
-				capacity.Reserve(tt.used)
+				require.NoError(t, capacity.Reserve(tt.used))
 			}
 
 			// Act

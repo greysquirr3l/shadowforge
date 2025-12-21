@@ -12,7 +12,7 @@ import (
 )
 
 func TestNewLogger_DefaultsToCLI(t *testing.T) {
-	os.Unsetenv("SHADOWFORGE_LOG_MODE")
+	require.NoError(t, os.Unsetenv("SHADOWFORGE_LOG_MODE"))
 	log := logger.NewLogger()
 	require.NotNil(t, log)
 	_, ok := log.Formatter.(*logrus.TextFormatter)

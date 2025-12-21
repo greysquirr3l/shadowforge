@@ -30,26 +30,6 @@ func stringToTechnique(technique string) (stego.StegoTechnique, error) {
 	}
 }
 
-// detectTechniqueFromFile detects the best steganography technique for a file.
-func detectTechniqueFromFile(filename string) stego.StegoTechnique {
-	ext := strings.ToLower(filepath.Ext(filename))
-
-	switch ext {
-	case ".png", ".bmp":
-		return stego.LSB
-	case ".jpg", ".jpeg":
-		return stego.DCT
-	case ".wav":
-		return stego.PhaseEncoding // Default to phase for audio
-	case ".txt", ".md":
-		return stego.ZeroWidth
-	case ".gif":
-		return stego.Palette
-	default:
-		return stego.LSB // Default fallback
-	}
-}
-
 // generateEmbedOutputFilename creates an innocuous output filename for embedded data.
 // Uses subtle variations that are common in everyday file naming to avoid suspicion.
 func generateEmbedOutputFilename(coverFile string) string {
@@ -60,7 +40,12 @@ func generateEmbedOutputFilename(coverFile string) string {
 
 	// Generate 4-byte random hex suffix for uniqueness
 	randomBytes := make([]byte, 4)
-	rand.Read(randomBytes)
+	if _, err := rand.Read(randomBytes); err != nil {
+		// Best-effort fallback: deterministic but non-sensitive.
+		for i := range randomBytes {
+			randomBytes[i] = 0
+		}
+	}
 	randomSuffix := hex.EncodeToString(randomBytes)
 
 	// Use common, innocuous naming patterns
@@ -88,7 +73,12 @@ func generateExtractOutputFilename(stegoFile string) string {
 
 	// Generate random filename for extracted data
 	randomBytes := make([]byte, 4)
-	rand.Read(randomBytes)
+	if _, err := rand.Read(randomBytes); err != nil {
+		// Best-effort fallback: deterministic but non-sensitive.
+		for i := range randomBytes {
+			randomBytes[i] = 0
+		}
+	}
 	randomName := hex.EncodeToString(randomBytes)
 
 	// Use generic names that don't suggest hidden data

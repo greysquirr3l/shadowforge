@@ -150,7 +150,7 @@ func TestDistributionStrategy_Complete_AlreadyComplete(t *testing.T) {
 		{Index: 3, Size: 1024, Checksum: "jkl", MediaID: "m4"},
 		{Index: 4, Size: 1024, Checksum: "mno", MediaID: "m5"},
 	}, 5)
-	strategy.Complete(manifest1)
+	require.NoError(t, strategy.Complete(manifest1))
 
 	manifest2, _ := NewShardManifest(strategy.ID, []ShardMetadata{
 		{Index: 0, Size: 1024, Checksum: "abc", MediaID: "m1"},
@@ -170,7 +170,7 @@ func TestDistributionStrategy_Complete_AfterFailure(t *testing.T) {
 	manifest, _ := NewShardManifest(strategy.ID, []ShardMetadata{
 		{Index: 0, Size: 1024, Checksum: "abc", MediaID: "m1"},
 	}, 5)
-	strategy.MarkFailed()
+	require.NoError(t, strategy.MarkFailed())
 
 	err := strategy.Complete(manifest)
 
@@ -205,7 +205,7 @@ func TestDistributionStrategy_MarkFailed_AfterComplete(t *testing.T) {
 		{Index: 3, Size: 1024, Checksum: "jkl", MediaID: "m4"},
 		{Index: 4, Size: 1024, Checksum: "mno", MediaID: "m5"},
 	}, 5)
-	strategy.Complete(manifest)
+	require.NoError(t, strategy.Complete(manifest))
 
 	err := strategy.MarkFailed()
 

@@ -4,6 +4,9 @@ package integration
 import (
 	"bytes"
 	"context"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"path/filepath"
 	"testing"
@@ -193,29 +196,29 @@ func TestCLIIntegration_JSONOutput(t *testing.T) {
 	}
 }
 
-// createTestPNG copies a real PNG from mixed-media for testing
+// createTestPNG creates a minimal but valid PNG file for testing (100x100 RGB image)
 func createTestPNG(t *testing.T, destPath string) {
-	// Find project root by walking up from current directory
-	wd, err := os.Getwd()
-	require.NoError(t, err)
+	// Create a 100x100 RGB image
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
 
-	projectRoot := wd
-	for {
-		if _, err := os.Stat(filepath.Join(projectRoot, "go.mod")); err == nil {
-			break
+	// Fill with a simple gradient pattern
+	for y := 0; y < 100; y++ {
+		for x := 0; x < 100; x++ {
+			img.Set(x, y, color.RGBA{
+				R: uint8((x * 255) / 100),
+				G: uint8((y * 255) / 100),
+				B: 128,
+				A: 255,
+			})
 		}
-		parent := filepath.Dir(projectRoot)
-		if parent == projectRoot {
-			t.Fatal("Could not find project root (go.mod)")
-		}
-		projectRoot = parent
 	}
 
-	// Copy real PNG from mixed-media
-	sourcePNG := filepath.Join(projectRoot, "mixed-media", "images", "f88dv18h9o1f1.png")
-	data, err := os.ReadFile(sourcePNG)
-	require.NoError(t, err, "should read source PNG")
-	require.NoError(t, os.WriteFile(destPath, data, 0644), "should write test PNG")
+	// Write PNG file
+	file, err := os.Create(destPath)
+	require.NoError(t, err)
+	defer func() { _ = file.Close() }()
+
+	require.NoError(t, png.Encode(file, img), "should encode PNG")
 }
 
 // TestCLIIntegration_ErrorHandling tests error scenarios

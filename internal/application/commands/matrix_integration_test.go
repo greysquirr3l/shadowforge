@@ -151,7 +151,7 @@ func TestEmbedMatrixHandler_Handle(t *testing.T) {
 
 				// Cleanup function
 				cleanup := func() {
-					os.RemoveAll(tmpDir)
+					_ = os.RemoveAll(tmpDir)
 				}
 
 				return tmpDir, cleanup
@@ -198,7 +198,7 @@ func TestEmbedMatrixHandler_Handle(t *testing.T) {
 					require.NoError(t, err)
 				}
 
-				return tmpDir, func() { os.RemoveAll(tmpDir) }
+				return tmpDir, func() { _ = os.RemoveAll(tmpDir) }
 			},
 			expectSuccess: true,
 			validateResult: func(t *testing.T, result *EmbedMatrixResult) {
@@ -348,7 +348,7 @@ func TestExtractMatrixHandler_Handle(t *testing.T) {
 				err = os.MkdirAll(outputDir, 0755)
 				require.NoError(t, err)
 
-				return tmpDir, func() { os.RemoveAll(tmpDir) }
+				return tmpDir, func() { _ = os.RemoveAll(tmpDir) }
 			},
 			expectSuccess: true,
 			validateResult: func(t *testing.T, result *ExtractMatrixResult) {
@@ -390,7 +390,7 @@ func TestExtractMatrixHandler_Handle(t *testing.T) {
 				err = os.MkdirAll(outputDir, 0755)
 				require.NoError(t, err)
 
-				return tmpDir, func() { os.RemoveAll(tmpDir) }
+				return tmpDir, func() { _ = os.RemoveAll(tmpDir) }
 			},
 			expectSuccess: true,
 			validateResult: func(t *testing.T, result *ExtractMatrixResult) {
@@ -429,7 +429,7 @@ func TestExtractMatrixHandler_Handle(t *testing.T) {
 				stegoPath := filepath.Join(tmpDir, "stego1.png")
 				err = os.WriteFile(stegoPath, make([]byte, 1000), 0644)
 				require.NoError(t, err)
-				return tmpDir, func() { os.RemoveAll(tmpDir) }
+				return tmpDir, func() { _ = os.RemoveAll(tmpDir) }
 			},
 			expectSuccess: false,
 			expectError:   "manifest file is required",
@@ -530,10 +530,15 @@ func TestMatrixCommand_Validate(t *testing.T) {
 			name: "invalid_mode",
 			cmd: func() EmbedMatrixCommand {
 				// Create temp files so validation reaches mode check
-				tmpDir, _ := os.MkdirTemp("", "matrix_validate_*")
+				tmpDir, err := os.MkdirTemp("", "matrix_validate_*")
+				if err != nil {
+					panic(err)
+				}
 				for i := 1; i <= 2; i++ {
 					coverPath := filepath.Join(tmpDir, fmt.Sprintf("c%d.png", i))
-					os.WriteFile(coverPath, make([]byte, 1000), 0644)
+					if err := os.WriteFile(coverPath, make([]byte, 1000), 0644); err != nil {
+						panic(err)
+					}
 				}
 				return EmbedMatrixCommand{
 					Payloads: []MatrixPayloadItem{
@@ -554,10 +559,15 @@ func TestMatrixCommand_Validate(t *testing.T) {
 			name: "invalid_redundancy_negative",
 			cmd: func() EmbedMatrixCommand {
 				// Create temp files so validation reaches redundancy check
-				tmpDir, _ := os.MkdirTemp("", "matrix_validate_*")
+				tmpDir, err := os.MkdirTemp("", "matrix_validate_*")
+				if err != nil {
+					panic(err)
+				}
 				for i := 1; i <= 2; i++ {
 					coverPath := filepath.Join(tmpDir, fmt.Sprintf("c%d.png", i))
-					os.WriteFile(coverPath, make([]byte, 1000), 0644)
+					if err := os.WriteFile(coverPath, make([]byte, 1000), 0644); err != nil {
+						panic(err)
+					}
 				}
 				return EmbedMatrixCommand{
 					Payloads: []MatrixPayloadItem{
@@ -584,9 +594,6 @@ func TestMatrixCommand_Validate(t *testing.T) {
 			if tt.expectError != "" {
 				require.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectError)
-			} else {
-				// Note: Will fail on file checks unless files exist
-				// In full validation, would need actual temp files
 			}
 		})
 	}

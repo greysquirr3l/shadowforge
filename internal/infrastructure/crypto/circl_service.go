@@ -372,7 +372,7 @@ func (s *CirclCryptoService) Encrypt(ctx context.Context, data []byte, publicKey
 	// Perform Kyber encapsulation to get shared secret
 	ciphertext, sharedSecret, err := s.EncapsulateKyber(ctx, kyberPubKey)
 	if err != nil {
-		return nil, fmt.Errorf("Kyber encapsulation failed: %w", err)
+		return nil, fmt.Errorf("kyber encapsulation failed: %w", err)
 	}
 
 	// Use shared secret as AES-256 key (first 32 bytes)
@@ -438,7 +438,7 @@ func (s *CirclCryptoService) Decrypt(ctx context.Context, payload *domain_crypto
 	// Decapsulate to recover shared secret
 	sharedSecret, err := s.DecapsulateKyber(ctx, kyberPrivKey, kyberCiphertext)
 	if err != nil {
-		return nil, fmt.Errorf("Kyber decapsulation failed: %w", err)
+		return nil, fmt.Errorf("kyber decapsulation failed: %w", err)
 	}
 
 	// Create AES cipher with shared secret
@@ -491,7 +491,7 @@ func (s *CirclCryptoService) Sign(ctx context.Context, data []byte, privateKey [
 	// Sign using Dilithium
 	signature, err := s.SignDilithium(ctx, dilithiumPrivKey, data)
 	if err != nil {
-		return nil, fmt.Errorf("Dilithium signing failed: %w", err)
+		return nil, fmt.Errorf("dilithium signing failed: %w", err)
 	}
 
 	s.logger.WithFields(logrus.Fields{
@@ -518,7 +518,7 @@ func (s *CirclCryptoService) Verify(ctx context.Context, data []byte, signature 
 	// Verify using Dilithium
 	valid, err := s.VerifyDilithium(ctx, dilithiumPubKey, data, signature)
 	if err != nil {
-		return false, fmt.Errorf("Dilithium verification failed: %w", err)
+		return false, fmt.Errorf("dilithium verification failed: %w", err)
 	}
 
 	s.logger.WithFields(logrus.Fields{

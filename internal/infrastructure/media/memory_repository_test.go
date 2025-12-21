@@ -502,7 +502,7 @@ func TestConcurrentAccess(t *testing.T) {
 	repo := NewMemoryRepository(slog.Default())
 
 	t.Run("ConcurrentSaves", func(t *testing.T) {
-		repo.Clear(ctx)
+		require.NoError(t, repo.Clear(ctx))
 
 		const numGoroutines = 10
 		const assetsPerGoroutine = 10
@@ -531,7 +531,7 @@ func TestConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("ConcurrentReadsAndWrites", func(t *testing.T) {
-		repo.Clear(ctx)
+		require.NoError(t, repo.Clear(ctx))
 
 		// Pre-populate
 		assets := make([]*media.MediaAsset, 20)
@@ -579,7 +579,7 @@ func TestConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("ConcurrentListAndModify", func(t *testing.T) {
-		repo.Clear(ctx)
+		require.NoError(t, repo.Clear(ctx))
 
 		var wg sync.WaitGroup
 		const duration = 100 * time.Millisecond
@@ -611,7 +611,7 @@ func TestConcurrentAccess(t *testing.T) {
 	})
 
 	t.Run("ConcurrentDeleteAndRead", func(t *testing.T) {
-		repo.Clear(ctx)
+		require.NoError(t, repo.Clear(ctx))
 
 		// Pre-populate
 		assets := make([]*media.MediaAsset, 50)

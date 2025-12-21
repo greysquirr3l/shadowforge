@@ -360,9 +360,10 @@ func (t *TextTechnique) extractWhitespace(stegoText string) ([]byte, error) {
 
 		if len(line) > len(trimmed) {
 			trailing := line[len(trimmed):]
-			if trailing == " " {
+			switch trailing {
+			case " ":
 				bits = append(bits, 0)
-			} else if trailing == "\t" {
+			case "\t":
 				bits = append(bits, 1)
 			}
 		}

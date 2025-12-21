@@ -4,6 +4,9 @@ package e2e
 import (
 	"context"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -81,9 +84,8 @@ func TestE2E_EmbedExtractWorkflow_LSB(t *testing.T) {
 	secretData := "This is a secret message for E2E testing"
 	require.NoError(t, os.WriteFile(secretFile, []byte(secretData), 0644))
 
-	// Copy real PNG from mixed-media directory
-	sourcePNG := filepath.Join(projectRoot, "mixed-media", "images", "f88dv18h9o1f1.png")
-	require.NoError(t, copyFile(sourcePNG, coverFile), "should copy test PNG")
+	// Generate a test PNG file programmatically
+	createTestPNG(t, coverFile)
 
 	// Step 1: Embed
 	output, err := execCommand(binaryPath, "embed", "-i", secretFile, "-c", coverFile, "-o", stegoFile, "-t", "lsb")
@@ -111,14 +113,14 @@ func TestE2E_AnalyzeCapacity(t *testing.T) {
 	tmpDir := t.TempDir()
 	coverFile := filepath.Join(tmpDir, "cover.png")
 
-	// Copy real PNG from mixed-media directory
-	sourcePNG := filepath.Join(projectRoot, "mixed-media", "images", "f88dv18h9o1f1.png")
-	require.NoError(t, copyFile(sourcePNG, coverFile))
+	// Generate a test PNG file programmatically
+	createTestPNG(t, coverFile)
 
 	// analyze capacity takes file as positional argument
 	output, err := execCommand(binaryPath, "analyze", "capacity", coverFile, "-t", "lsb")
 	require.NoError(t, err, "analyze command should succeed")
-	assert.Contains(t, output, "bytes", "output should contain capacity information")
+	assert.Contains(t, output, "KB", "output should contain capacity information in KB")
+	assert.Contains(t, output, "Capacity", "output should contain capacity analysis")
 }
 
 // TestE2E_JSONOutput tests JSON output mode
@@ -182,14 +184,11 @@ func TestE2E_ErrorScenarios(t *testing.T) {
 
 // findOrBuildBinary finds existing binary or builds it
 func findOrBuildBinary(t *testing.T) string {
-	binaryPath := filepath.Join(projectRoot, "bin", binaryName)
+	binaryPath := filepath.Join(projectRoot, "bin", binaryName+"-e2e")
 
-	// Check if binary exists
-	if _, err := os.Stat(binaryPath); err == nil {
-		return binaryPath
-	}
+	require.NoError(t, os.MkdirAll(filepath.Dir(binaryPath), 0755))
 
-	// Build binary
+	// Always build to avoid running a stale binary (E2E depends on current CLI wiring).
 	t.Logf("Building CLI binary...")
 	cmd := exec.Command("go", "build", "-o", binaryPath, "./cmd/cli")
 	cmd.Dir = projectRoot
@@ -233,13 +232,27 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
-// copyFile copies a file
-func copyFile(src, dst string) error {
-	data, err := os.ReadFile(src)
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dst, data, 0644)
-}
+// createTestPNG creates a minimal but valid PNG file for testing (100x100 RGB image)
+func createTestPNG(t *testing.T, path string) {
+	// Create a 100x100 RGB image
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
 
-// Note: createMinimalPNG removed - now using real PNG files from mixed-media/
+	// Fill with a simple gradient pattern
+	for y := 0; y < 100; y++ {
+		for x := 0; x < 100; x++ {
+			img.Set(x, y, color.RGBA{
+				R: uint8((x * 255) / 100),
+				G: uint8((y * 255) / 100),
+				B: 128,
+				A: 255,
+			})
+		}
+	}
+
+	// Write PNG file
+	file, err := os.Create(path)
+	require.NoError(t, err)
+	defer func() { _ = file.Close() }()
+
+	require.NoError(t, png.Encode(file, img), "should encode PNG")
+}

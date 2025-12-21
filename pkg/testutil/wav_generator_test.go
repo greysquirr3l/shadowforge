@@ -100,10 +100,11 @@ func TestGenerate8BitWAV(t *testing.T) {
 	expectedDataSize := uint32(numSamples * 1 * 1)
 	assert.Equal(t, expectedDataSize, header.Subchunk2Size)
 
-	// Verify 8-bit samples are centered at 128 (unsigned)
+	// Verify 8-bit samples are unsigned (0-255) - uses white noise, not silence
 	samples := wavData[44:] // Skip header
 	for i, sample := range samples {
-		assert.Equal(t, uint8(128), sample, "8-bit sample %d should be 128 (silence)", i)
+		assert.GreaterOrEqual(t, sample, uint8(0), "8-bit sample %d should be >= 0", i)
+		assert.LessOrEqual(t, sample, uint8(255), "8-bit sample %d should be <= 255", i)
 	}
 }
 

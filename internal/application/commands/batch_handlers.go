@@ -575,7 +575,7 @@ func (h *ExtractBatchHandler) decompressData(data []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer reader.Close()
+	defer func() { _ = reader.Close() }()
 
 	var buffer bytes.Buffer
 	if _, err := io.Copy(&buffer, reader); err != nil {

@@ -9,7 +9,6 @@ import (
 	"image"
 	_ "image/jpeg" // Register JPEG decoder
 	"image/png"
-	_ "image/png" // Register PNG decoder
 	"math"
 	"net/http"
 	"net/url"
@@ -107,8 +106,8 @@ Examples:
 	embedCmd.Flags().BoolP("json", "j", false, "Output result in JSON format")
 
 	// Mark required flags
-	embedCmd.MarkFlagRequired("input")
-	embedCmd.MarkFlagRequired("cover")
+	cobra.CheckErr(embedCmd.MarkFlagRequired("input"))
+	cobra.CheckErr(embedCmd.MarkFlagRequired("cover"))
 	// output is now optional - will be auto-generated
 
 	return []*cobra.Command{embedCmd}, nil
@@ -185,101 +184,6 @@ func (h *CLIHandlers) handleEmbedCommand(cmd *cobra.Command, args []string, logg
 	if err != nil {
 		return fmt.Errorf("embed operation failed: %w", err)
 	}
-
-	// Output result
-	if jsonOutput {
-		return h.outputJSON(result)
-	}
-
-	return h.outputEmbedResult(result)
-}
-
-// simulateEmbedOperation simulates the embed operation until services are wired
-func (h *CLIHandlers) simulateEmbedOperation(cmd commands.EmbedCommand, jsonOutput bool, start time.Time, logger *logrus.Logger) error {
-	// Read file sizes for realistic simulation
-	inputStat, _ := os.Stat(cmd.InputFile)
-	coverStat, _ := os.Stat(cmd.CoverFile)
-
-	// Simulate processing time based on file size
-	payloadSize := inputStat.Size()
-	coverSize := coverStat.Size()
-
-	// Basic capacity estimation (very rough)
-	var estimatedCapacity int64
-	var detectedTechnique stego.StegoTechnique = cmd.Technique
-
-	ext := strings.ToLower(filepath.Ext(cmd.CoverFile))
-	if cmd.Technique == "" {
-		// Auto-detect based on file extension
-		switch ext {
-		case ".png", ".bmp":
-			detectedTechnique = stego.LSB
-			estimatedCapacity = coverSize / 8 // Rough LSB capacity
-		case ".jpg", ".jpeg":
-			detectedTechnique = stego.DCT
-			estimatedCapacity = coverSize / 16 // Rough DCT capacity
-		case ".wav":
-			detectedTechnique = stego.PhaseEncoding
-			estimatedCapacity = coverSize / 32 // Rough audio capacity
-		case ".txt", ".md":
-			detectedTechnique = stego.ZeroWidth
-			estimatedCapacity = coverSize / 4 // Rough text capacity
-		case ".gif":
-			detectedTechnique = stego.Palette
-			estimatedCapacity = coverSize / 64 // Rough palette capacity
-		default:
-			return fmt.Errorf("unsupported cover file format: %s", ext)
-		}
-	} else {
-		estimatedCapacity = coverSize / 10 // Generic estimation
-	}
-
-	// Check capacity
-	if payloadSize > estimatedCapacity {
-		return fmt.Errorf("payload too large: %d bytes, estimated capacity: %d bytes",
-			payloadSize, estimatedCapacity)
-	}
-
-	// Simulate processing delay
-	time.Sleep(time.Duration(payloadSize/1024) * time.Millisecond)
-
-	// Copy cover file to output (simulation)
-	coverData, err := os.ReadFile(cmd.CoverFile)
-	if err != nil {
-		return fmt.Errorf("failed to read cover file: %w", err)
-	}
-
-	outputDir := filepath.Dir(cmd.OutputFile)
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	if err := os.WriteFile(cmd.OutputFile, coverData, 0644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
-	processingTime := time.Since(start)
-	capacityUsed := float64(payloadSize) / float64(estimatedCapacity) * 100
-
-	// Create simulated result
-	result := &commands.EmbedResult{
-		OutputFile:      cmd.OutputFile,
-		Technique:       detectedTechnique,
-		PayloadSize:     payloadSize,
-		CoverSize:       coverSize,
-		OutputSize:      coverSize, // Same size for simulation
-		CapacityUsed:    capacityUsed,
-		QualityScore:    0.85, // Simulated quality score
-		ProcessingTime:  processingTime.Milliseconds(),
-		EncryptionUsed:  cmd.Password != "",
-		CompressionUsed: cmd.Redundancy > 0,
-	}
-
-	logger.WithFields(logrus.Fields{
-		"technique":       result.Technique,
-		"capacity_used":   fmt.Sprintf("%.1f%%", result.CapacityUsed),
-		"processing_time": fmt.Sprintf("%dms", result.ProcessingTime),
-	}).Info("Embed operation simulated successfully")
 
 	// Output result
 	if jsonOutput {
@@ -501,7 +405,7 @@ Automatically detects and uses the correct extraction method for:
 	extractCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
 
 	// Mark required flags (output is now optional)
-	extractCmd.MarkFlagRequired("input")
+	cobra.CheckErr(extractCmd.MarkFlagRequired("input"))
 
 	return []*cobra.Command{extractCmd}, nil
 }
@@ -614,7 +518,7 @@ Supported media types:
 	scanDirCmd.Flags().StringP("dir", "d", "", "Directory to scan (required)")
 	scanDirCmd.Flags().BoolP("json", "j", false, "Output results in JSON format")
 	scanDirCmd.Flags().BoolP("verbose", "v", false, "Enable verbose output")
-	scanDirCmd.MarkFlagRequired("dir")
+	cobra.CheckErr(scanDirCmd.MarkFlagRequired("dir"))
 
 	// Generate covers command
 	generateCmd := &cobra.Command{
@@ -1160,8 +1064,6 @@ func handleGenerateCoversCommand(cmd *cobra.Command, args []string, logger *logr
 	// Generate images
 	var successful int
 	var totalCapacity int64
-	var generatedFiles []MediaFileInfo
-
 	for i := 0; i < count; i++ {
 		// Select theme (rotate through available themes)
 		theme := themes[i%len(themes)]
@@ -1193,7 +1095,6 @@ func handleGenerateCoversCommand(cmd *cobra.Command, args []string, logger *logr
 			continue
 		}
 
-		generatedFiles = append(generatedFiles, fileInfo)
 		totalCapacity += fileInfo.SafeCapacity
 		successful++
 
@@ -1391,7 +1292,9 @@ func generateFilename(theme string, index int, obfuscate bool) string {
 	if obfuscate {
 		// Generate random hex suffix for obfuscation
 		randomBytes := make([]byte, 4)
-		rand.Read(randomBytes)
+		if _, err := rand.Read(randomBytes); err != nil {
+			return fmt.Sprintf("cover_%02d_%s.png", index+1, theme)
+		}
 		hexSuffix := fmt.Sprintf("%x", randomBytes)
 		return fmt.Sprintf("cover_%s_%s.png", hexSuffix, theme)
 	}
@@ -1419,7 +1322,7 @@ func downloadImage(prompt string, width, height int, outputPath string, logger *
 	if err != nil {
 		return fmt.Errorf("failed to download: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API returned status %d", resp.StatusCode)
@@ -1448,7 +1351,7 @@ func downloadImage(prompt string, width, height int, outputPath string, logger *
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer outFile.Close()
+	defer func() { _ = outFile.Close() }()
 
 	// Encode as uncompressed PNG (no compression for maximum file size and capacity)
 	// This is critical: API returns compressed images (~100KB), but uncompressed
@@ -1573,7 +1476,7 @@ Examples:
 	createCmd.Flags().BoolP("verbose", "v", false, "Verbose output")
 
 	// Mark required flags
-	createCmd.MarkFlagRequired("output")
+	cobra.CheckErr(createCmd.MarkFlagRequired("output"))
 
 	archiveCmd.AddCommand(createCmd)
 	return []*cobra.Command{archiveCmd}, nil
@@ -1636,7 +1539,6 @@ func handleArchiveCreateCommand(cmd *cobra.Command, args []string, logger *logru
 				Warn("Encryption requires ZIP format, overriding format selection")
 		}
 		format = archive.FormatZIP
-		formatStr = "zip"
 	}
 
 	if encrypt && password == "" {
@@ -1834,11 +1736,11 @@ func createPasswordProtectedZIP(archiveEntity *archive.Archive, outputPath, pass
 	if err != nil {
 		return fmt.Errorf("failed to create encrypted ZIP file: %w", err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Create ZIP writer with encryption support
 	zipWriter := yekazip.NewWriter(file)
-	defer zipWriter.Close()
+	defer func() { _ = zipWriter.Close() }()
 
 	logger.WithField("file_count", len(archiveEntity.Entries)).
 		WithField("output_path", outputPath).
