@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
-"""Generate PNG images from display equations embedded in a Markdown document.
+"""
+Generate PNG images from display equations embedded in a Markdown document.
 
-Modified from generate_equation_svgs.py to output PNG format suitable for watermarking.
+Usage examples:
+
+    1) Render display math blocks to PNGs in a default `equations/` folder:
+
+         python3 scripts/generate_equation_pngs.py \
+             docs/whitepaper.md \
+             --dpi 150 \
+             --fontsize 22
+
+    2) Custom output directory and in-place rewrite of Markdown:
+
+         python3 scripts/generate_equation_pngs.py \
+             README.md \
+             --outdir ./eq_pngs \
+             --dpi 200 \
+             --fontsize 24 \
+             --inplace
+
+Notes:
+- No hardcoded paths; provide the Markdown file and optional output directory.
+- Requires Matplotlib: `pip install matplotlib`.
+- Only `$$...$$` display math blocks are processed; fenced code blocks are ignored.
+- Output PNGs are tightly cropped and rendered on a white background for clarity.
 """
 
 from __future__ import annotations
