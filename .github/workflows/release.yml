@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to release (e.g., v0.7.5)'
+        description: "Tag to release (e.g., v0.7.5)"
         required: true
         type: string
 
@@ -59,7 +59,7 @@ jobs:
           else
             tag="${GITHUB_REF_NAME}"
           fi
-          
+
           version="${tag#v}"
 
           mkdir -p dist
