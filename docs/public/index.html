@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Production-grade quantum-resistant steganography toolkit in Go">
+    <title>Shadowforge | Quantum-Resistant Steganography</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0px, transparent 1px, transparent 2px, rgba(255,255,255,0.02) 3px),
+                repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0px, transparent 1px, transparent 2px, rgba(255,255,255,0.02) 3px);
+            background-size: 40px 40px;
+            opacity: 0.3;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .logo {
+            font-size: 4rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 50%, #f107a3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 4px;
+            text-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+            margin-bottom: 10px;
+            animation: glow 3s ease-in-out infinite alternate;
+        }
+
+        .tagline {
+            font-size: 1.3rem;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            font-weight: 300;
+            opacity: 0.9;
+        }
+
+        .hero {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 20px;
+            padding: 50px;
+            margin: 40px auto;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.1);
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .hero h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #00d4ff 0%, #7b2ff7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #b0b0b0;
+            margin-bottom: 15px;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 60px 0;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(123, 47, 247, 0.3);
+            border-radius: 15px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            animation: fadeInUp 1s ease-out both;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0.4s; }
+        .feature-card:nth-child(2) { animation-delay: 0.5s; }
+        .feature-card:nth-child(3) { animation-delay: 0.6s; }
+        .feature-card:nth-child(4) { animation-delay: 0.7s; }
+        .feature-card:nth-child(5) { animation-delay: 0.8s; }
+        .feature-card:nth-child(6) { animation-delay: 0.9s; }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 212, 255, 0.6);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .feature-card h3 {
+            color: #00d4ff;
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .feature-card .icon {
+            font-size: 1.8rem;
+        }
+
+        .feature-card p {
+            color: #a0a0a0;
+            line-height: 1.6;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin: 60px 0;
+            padding: 40px;
+            background: rgba(0, 212, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: #808080;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+
+        .cta-section {
+            text-align: center;
+            padding: 60px 20px;
+            animation: fadeInUp 1s ease-out 1s both;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 100%);
+            color: #fff;
+            border: none;
+            box-shadow: 0 5px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(0, 212, 255, 0.5);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #00d4ff;
+            border: 2px solid #00d4ff;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 212, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: auto;
+            color: #606060;
+        }
+
+        footer a {
+            color: #00d4ff;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: #7b2ff7;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+            }
+            to {
+                text-shadow: 0 0 40px rgba(123, 47, 247, 0.5), 0 0 60px rgba(0, 212, 255, 0.3);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2.5rem;
+            }
+
+            .tagline {
+                font-size: 1rem;
+            }
+
+            .hero {
+                padding: 30px 20px;
+            }
+
+            .hero h2 {
+                font-size: 1.5rem;
+            }
+
+            .features {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-number {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">SHADOWFORGE</h1>
+            <p class="tagline">Quantum-Resistant Steganography</p>
+        </header>
+
+        <section class="hero">
+            <h2>🔒 Forge Secrets in the Shadows, Shield from Quantum Eyes</h2>
+            <p>
+                Shadowforge is a production-grade steganography toolkit built in Go, implementing
+                post-quantum cryptographic algorithms (Kyber-1024 and Dilithium3) combined with
+                advanced steganographic techniques to embed encrypted data invisibly within digital media.
+            </p>
+            <p>
+                Following Clean Architecture principles with Domain-Driven Design (DDD) and CQRS patterns,
+                Shadowforge provides a secure, maintainable foundation for quantum-resistant data hiding.
+            </p>
+        </section>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">7</div>
+                <div class="stat-label">Stego Techniques</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">4</div>
+                <div class="stat-label">Distribution Patterns</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">2</div>
+                <div class="stat-label">PQC Algorithms</div>
+            </div>
+        </div>
+
+        <section class="features">
+            <div class="feature-card">
+                <h3><span class="icon">🛡️</span> Post-Quantum Security</h3>
+                <p>
+                    Kyber-1024 KEM for encryption and Dilithium3 for digital signatures,
+                    ensuring protection against future quantum computing threats.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3><span class="icon">🎨</span> Multiple Techniques</h3>
+                <p>
+                    LSB (Image), DCT (JPEG), Phase Encoding, Echo Hiding, Palette-based,
+                    LSB-Audio (WAV), and Zero-Width (Text) steganography.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3><span class="icon">🔧</span> Error Correction</h3>
+                <p>
+                    Reed-Solomon error correction with configurable redundancy levels,
+                    enabling K-of-N threshold recovery from distributed shards.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3><span class="icon">📦</span> Distribution Patterns</h3>
+                <p>
+                    One-to-one, one-to-many, many-to-one, and many-to-many distribution
+                    with intelligent shard allocation and capacity-aware embedding.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3><span class="icon">⚡</span> Production-Ready</h3>
+                <p>
+                    Full CLI application with comprehensive testing, security hardening,
+                    and OSSF branch protection for enterprise-grade reliability.
+                </p>
+            </div>
+
+            <div class="feature-card">
+                <h3><span class="icon">🏗️</span> Clean Architecture</h3>
+                <p>
+                    DDD with 8 bounded contexts, CQRS pattern, and strict dependency rules
+                    for maintainable, scalable codebase architecture.
+                </p>
+            </div>
+        </section>
+
+        <section class="cta-section">
+            <h2 style="font-size: 2.5rem; margin-bottom: 20px; color: #00d4ff;">Get Started</h2>
+            <p style="font-size: 1.2rem; color: #b0b0b0; max-width: 600px; margin: 0 auto 30px;">
+                Download the latest release or explore the source code to start securing your data
+                with quantum-resistant steganography.
+            </p>
+            <div class="cta-buttons">
+                <a href="https://github.com/greysquirr3l/shadowforge/releases/latest" class="btn btn-primary">
+                    Download Latest
+                </a>
+                <a href="https://github.com/greysquirr3l/shadowforge" class="btn btn-secondary">
+                    View on GitHub
+                </a>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>
+            Built with ❤️ using <a href="https://go.dev" target="_blank">Go</a> |
+            <a href="https://github.com/greysquirr3l/shadowforge" target="_blank">GitHub</a> |
+            <a href="https://github.com/greysquirr3l/shadowforge/blob/main/LICENSE" target="_blank">MIT License</a>
+        </p>
+        <p style="margin-top: 10px; font-size: 0.9rem;">
+            © 2025 Shadowforge | Quantum-Resistant Steganography Toolkit
+        </p>
+    </footer>
+</body>
+</html>
