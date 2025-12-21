@@ -32,6 +32,32 @@ test_output.txt
 pexels_api.txt
 .venv/
 
+# SECURITY: Watermark receipts contain encryption keys - NEVER commit
+*receipt*.md
+*receipt*.json
+*receipt*.txt
+*watermark-receipt*
+*-receipt.*
+watermark-receipt*
+receipt*
+
+# SECURITY: Signing and cryptographic keys - NEVER commit
+# Covers: private keys, secret keys, signing keys, key material
+keys/
+!keys/example/
+*signing*.key
+*signing*.pem
+*private*.key
+*private*.pem
+*secret*.key
+*secret*.pem
+watermark*.key
+watermark*.pem
+*.key
+*.pem
+!docs/examples/**/*.pem
+!tests/testdata/**/*.key
+
 # Go build artifacts
 *.exe
 *.exe~

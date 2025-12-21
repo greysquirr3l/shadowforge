@@ -195,15 +195,37 @@ to evade steganalysis detection.
 
 Complete documentation available in [`docs/public/cli/`](docs/public/cli/):
 
-- **Getting Started**: [Installation](docs/public/cli/installation.md), [Getting Started Guide](docs/public/cli/getting-started.md), [Quick Reference](docs/public/cli/quick-reference.md)
-- **Commands**: Complete reference for all [8 command categories](docs/public/cli/commands/README.md)
-- **Guides**: [Advanced Usage](docs/public/cli/guides/advanced.md), [Security Hardening](docs/public/cli/guides/security.md)
-- **Reference**: [Glossary](docs/public/cli/glossary.md), [Use Cases](docs/public/cli/use-cases.md), [FAQ](docs/public/cli/faq.md)
-- **Help**: [Best Practices](docs/public/cli/best-practices.md), [Troubleshooting](docs/public/cli/troubleshooting.md), [Security](docs/public/cli/security.md)
+**Getting Started:**
+
+- [Installation](docs/public/cli/installation.md)
+- [Getting Started Guide](docs/public/cli/getting-started.md)
+- [Quick Reference](docs/public/cli/quick-reference.md)
+
+**Commands:**
+
+- [Complete reference for all 8 command categories](docs/public/cli/commands/README.md)
+
+**Guides:**
+
+- [Advanced Usage](docs/public/cli/guides/advanced.md)
+- [Security Hardening](docs/public/cli/guides/security.md)
+
+**Reference:**
+
+- [Glossary](docs/public/cli/glossary.md)
+- [Use Cases](docs/public/cli/use-cases.md)
+- [FAQ](docs/public/cli/faq.md)
+
+**Help:**
+
+- [Best Practices](docs/public/cli/best-practices.md)
+- [Troubleshooting](docs/public/cli/troubleshooting.md)
+- [Security](docs/public/cli/security.md)
 
 ## 📦 Installation
 
-**Status**: CLI application is fully functional with 7 production-ready steganography techniques and all 4 distribution patterns.
+**Status**: CLI application is fully functional with 7 production-ready steganography
+techniques and all 4 distribution patterns.
 
 ### Prerequisites
 
@@ -520,7 +542,7 @@ and security purposes only. Always comply with applicable laws and regulations.
 ## 🔗 Links
 
 - **GitHub**: <https://github.com/greysquirr3l/shadowforge>
-- **Documentation**: [docs/architecture.md](docs/architecture.md)
+- **Documentation**: [docs/public/cli/architecture.md](docs/public/cli/architecture.md)
 - **Issues**: <https://github.com/greysquirr3l/shadowforge/issues>
 
 ---
