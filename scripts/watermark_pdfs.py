@@ -1,5 +1,28 @@
 #!/usr/bin/env python3
 
+"""
+Shadowforge watermark pipeline: rasterize PDFs to PNGs, embed encrypted/signed
+watermarks across pages, and rebuild PDFs.
+
+Usage examples:
+
+    1) Basic watermarking with explicit paths:
+
+         python3 scripts/watermark_pdfs.py \
+             doc1.pdf doc2.pdf \
+             --recipient "Alice Example <alice@example.com>" \
+             --gpg-key /path/to/recipient_pubkey.asc \
+             --shadowforge /absolute/path/to/bin/shadowforge \
+             --dpi 200 \
+             --suffix _wm
+
+Notes:
+- No hardcoded project paths; `--shadowforge` must be provided explicitly.
+- Creates and uses a local `.venv/` in the current working directory if needed.
+- Watermark data is encrypted with the provided public key and signed unless disabled.
+- PNG rasterization increases output PDF size; choose `--dpi` accordingly.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -13,6 +36,37 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def _setup_venv_and_exec() -> None:
+    """Setup virtual environment and re-execute this script within it."""
+    venv_path = Path.cwd() / ".venv"
+    python_bin = venv_path / "bin" / "python"
+    pip_bin = venv_path / "bin" / "pip"
+
+    # Check if already running in venv
+    if hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix):
+        # Already in venv, skip setup
+        return
+
+    # Create venv if it doesn't exist
+    if not venv_path.exists():
+        print(f"📦 Creating virtual environment at {venv_path}...")
+        subprocess.run([sys.executable, "-m", "venv", str(venv_path)], check=True)
+
+    # Install dependencies
+    if not (python_bin.exists() and pip_bin.exists()):
+        raise RuntimeError(f"venv setup failed: {venv_path} is incomplete")
+
+    print("📦 Installing dependencies...")
+    subprocess.run([str(pip_bin), "install", "--quiet", "pymupdf"], check=True)
+
+    # Re-execute this script using venv python
+    print("✅ Virtual environment ready, launching script...\n")
+    os.execv(str(python_bin), [str(python_bin), __file__] + sys.argv[1:])
+
+
+_setup_venv_and_exec()
 
 import fitz  # PyMuPDF
 
@@ -235,18 +289,18 @@ def main() -> int:
     parser.add_argument(
         "--recipient",
         required=True,
-        help='Recipient string, e.g. "Carrie Wheeler <carrie.wheeler@outlook.com>"',
+        help='Recipient string, e.g. "Nick Campbell <s0ma@protonmail.com>"',
     )
     parser.add_argument("--gpg-key", required=True, type=Path, help="ASCII-armored public key file")
     parser.add_argument(
         "--shadowforge",
-        default=Path("./bin/shadowforge"),
+        required=True,
         type=Path,
-        help="Path to Shadowforge CLI binary",
+        help="Absolute path to Shadowforge CLI binary",
     )
 
     parser.add_argument("--dpi", default=200, type=int, help="Rasterization DPI (default: 200)")
-    parser.add_argument("--suffix", default="_cwheeler", help="Filename suffix for outputs")
+    parser.add_argument("--suffix", default="_wm", help="Filename suffix for outputs")
 
     parser.add_argument("--technique", default="lsb", choices=["lsb", "dct"], help="Watermark technique")
     parser.add_argument("--redundancy", default=0.3, type=float, help="Reed-Solomon redundancy")

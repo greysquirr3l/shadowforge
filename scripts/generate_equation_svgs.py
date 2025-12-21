@@ -1,5 +1,20 @@
 #!/usr/bin/env python3
-"""Generate SVG images from display equations embedded in a Markdown document.
+"""
+Generate SVG images from display equations embedded in a Markdown document.
+
+Usage examples:
+
+    1) Render display math blocks to SVGs:
+
+         python3 scripts/generate_equation_svgs.py \
+             docs/whitepaper.md
+
+    2) Custom output directory and in-place rewrite of Markdown:
+
+         python3 scripts/generate_equation_svgs.py \
+             README.md \
+             --outdir ./eq_svgs \
+             --inplace
 
 Default behavior:
 - Scan a Markdown file for display math blocks delimited by `$$ ... $$`.
@@ -11,6 +26,8 @@ Optional:
     a Markdown image reference to the generated SVG.
 
 Notes:
+- No hardcoded paths; provide the Markdown file and optional output directory.
+- Requires Matplotlib: `pip install matplotlib`.
 - Uses Matplotlib's built-in mathtext renderer (subset of LaTeX). Some macros
     (e.g., certain AMS commands) may not render; simplify those equations.
 - Inline math `$...$` is not processed by default.

@@ -22,6 +22,7 @@ docs/
 .github/instructions/
 .github/copilot-instructions.md
 .github/copilot-instructions.md.bak
+.github/branch-protection.json
 .vscode/
 .mcp.json
 INITIAL_PROMPT.md
