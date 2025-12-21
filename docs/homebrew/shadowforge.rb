@@ -13,7 +13,7 @@ class Shadowforge < Formula
   license "Apache-2.0"
 
   # Example:
-  # version "0.6.0"
+  # version "0.7.6"
   version "0.0.0"
 
   on_macos do

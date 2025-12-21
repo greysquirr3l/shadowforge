@@ -235,12 +235,36 @@ Complete documentation available in [`docs/public/cli/`](docs/public/cli/):
 **Status**: CLI application is fully functional with 7 production-ready steganography
 techniques and all 4 distribution patterns.
 
-### Prerequisites
+### Homebrew (macOS/Linux)
 
-- Go 1.21 or higher
-- Git
+```bash
+brew tap greysquirr3l/shadowforge
+brew install shadowforge
+```
+
+### Download Binary
+
+Download pre-built binaries from [GitHub Releases](https://github.com/greysquirr3l/shadowforge/releases/latest):
+
+- macOS (Intel): `shadowforge_*_darwin_amd64.tar.gz`
+- macOS (Apple Silicon): `shadowforge_*_darwin_arm64.tar.gz`
+- Linux (x64): `shadowforge_*_linux_amd64.tar.gz`
+- Linux (ARM64): `shadowforge_*_linux_arm64.tar.gz`
+
+```bash
+# Example: Install on macOS Apple Silicon
+VERSION=0.7.6
+curl -L -O https://github.com/greysquirr3l/shadowforge/releases/download/v${VERSION}/shadowforge_${VERSION}_darwin_arm64.tar.gz
+tar -xzf shadowforge_${VERSION}_darwin_arm64.tar.gz
+sudo mv shadowforge_${VERSION}_darwin_arm64/shadowforge /usr/local/bin/
+shadowforge version
+```
 
 ### From Source
+
+**Prerequisites**: Go 1.21 or higher, Git
+
+### Build from Source
 
 ```bash
 # Clone the repository
