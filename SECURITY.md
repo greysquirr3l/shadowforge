@@ -50,15 +50,18 @@ When using Shadowforge:
 ## Known Security Considerations
 
 ### Timing Attacks
+
 - Shadowforge uses constant-time comparison for cryptographic operations
 - Some non-cryptographic code may have timing variations (documented in audit)
 
 ### File Processing
+
 - All archive extraction includes zip-slip protection
 - File size limits enforced to prevent resource exhaustion
 - Sanitization applied to all media inputs
 
 ### Cryptographic Guarantees
+
 - Post-quantum security via Kyber-1024 (KEM) and Dilithium3 (signatures)
 - AES-GCM for symmetric encryption
 - Argon2id for key derivation
@@ -66,8 +69,8 @@ When using Shadowforge:
 
 ## Security Audit
 
-Latest security audit: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)  
-Date: December 21, 2025  
+Latest security audit: [SECURITY_AUDIT_REPORT.md](./SECURITY_AUDIT_REPORT.md)
+Date: December 21, 2025
 Version: 0.7.6
 
 ## Hall of Fame

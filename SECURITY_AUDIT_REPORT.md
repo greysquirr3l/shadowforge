@@ -1,7 +1,7 @@
 # Shadowforge Security Audit Report
 
 **Generated**: December 21, 2025
-**Version**: 0.7.6
+**Version**: 0.7.7
 **Commit**: 746dea6
 
 ---
