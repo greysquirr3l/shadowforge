@@ -1,6 +1,23 @@
 # Homebrew Distribution (shadowforge)
 
-This project is a CLI tool, so Homebrew distribution should use a **formula** (not a cask).
+✅ **Status**: Homebrew tap is live at [greysquirr3l/homebrew-shadowforge](https://github.com/greysquirr3l/homebrew-shadowforge)
+
+This project is a CLI tool, so Homebrew distribution uses a **formula** (not a cask).
+
+## User Installation
+
+Users can install shadowforge via Homebrew:
+
+```bash
+brew tap greysquirr3l/shadowforge
+brew install shadowforge
+```
+
+## Tap Repository
+
+The tap lives at: https://github.com/greysquirr3l/homebrew-shadowforge
+
+Formula location: `Formula/shadowforge.rb`
 
 ## Release Assets
 
