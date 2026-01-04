@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Shadowforge CLI Documentation - Quantum-Resistant Steganography Command Reference">
+    <title>Shadowforge CLI Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            border-bottom: 2px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 900;
+            background: linear-gradient(135deg, #00d4ff 0%, #7b2ff7 50%, #f107a3 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        .tagline {
+            font-size: 1rem;
+            color: #00d4ff;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .version-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid #00d4ff;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            color: #00d4ff;
+        }
+
+        nav {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 30px;
+        }
+
+        .nav-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .nav-section h2 {
+            color: #00d4ff;
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+        }
+
+        .nav-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            list-style: none;
+        }
+
+        .nav-links li a {
+            display: block;
+            padding: 15px 20px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(123, 47, 247, 0.2);
+            border-radius: 8px;
+            color: #e0e0e0;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links li a:hover {
+            background: rgba(0, 212, 255, 0.1);
+            border-color: #00d4ff;
+            transform: translateX(5px);
+        }
+
+        .nav-links li a .icon {
+            font-size: 1.2rem;
+            margin-right: 10px;
+        }
+
+        .nav-links li a .desc {
+            display: block;
+            font-size: 0.85rem;
+            color: #808080;
+            margin-top: 5px;
+        }
+
+        .quick-start {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 10px;
+            padding: 30px;
+            margin: 30px 0;
+        }
+
+        .quick-start h2 {
+            color: #00d4ff;
+            margin-bottom: 20px;
+        }
+
+        .code-block {
+            background: #0a0a0f;
+            border: 1px solid rgba(123, 47, 247, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            overflow-x: auto;
+        }
+
+        .code-block code {
+            font-family: 'Courier New', monospace;
+            color: #00d4ff;
+            font-size: 0.95rem;
+        }
+
+        .command-example {
+            margin: 20px 0;
+        }
+
+        .command-example h3 {
+            color: #7b2ff7;
+            font-size: 1.1rem;
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 20px;
+            margin-top: 60px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #606060;
+        }
+
+        footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: #7b2ff7;
+        }
+
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 2rem;
+            }
+
+            .nav-links {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 class="logo">SHADOWFORGE CLI</h1>
+            <p class="tagline">Command-Line Documentation</p>
+            <span class="version-badge">v0.8.0</span>
+        </header>
+
+        <section class="quick-start">
+            <h2>⚡ Quick Start</h2>
+
+            <div class="command-example">
+                <h3>Install Shadowforge</h3>
+                <div class="code-block">
+                    <code>brew install greysquirr3l/tap/shadowforge</code>
+                </div>
+            </div>
+
+            <div class="command-example">
+                <h3>Embed a Secret in an Image</h3>
+                <div class="code-block">
+                    <code>shadowforge embed --input secret.txt --cover image.png --output stego.png</code>
+                </div>
+            </div>
+
+            <div class="command-example">
+                <h3>Extract the Secret</h3>
+                <div class="code-block">
+                    <code>shadowforge extract --input stego.png --output recovered.txt</code>
+                </div>
+            </div>
+        </section>
+
+        <nav>
+            <div class="nav-section">
+                <h2>📚 Getting Started</h2>
+                <ul class="nav-links">
+                    <li>
+                        <a href="installation.html">
+                            <span class="icon">⚙️</span> Installation
+                            <span class="desc">System requirements and installation methods</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="getting-started.html">
+                            <span class="icon">🚀</span> Getting Started
+                            <span class="desc">First-time setup and basic workflows</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="quick-reference.html">
+                            <span class="icon">⚡</span> Quick Reference
+                            <span class="desc">Command cheatsheet and common patterns</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <h2>📖 Command Reference</h2>
+                <ul class="nav-links">
+                    <li>
+                        <a href="commands/embed.html">
+                            <span class="icon">🔐</span> Embed Commands
+                            <span class="desc">Embed encrypted data in media files</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="commands/extract.html">
+                            <span class="icon">🔓</span> Extract Commands
+                            <span class="desc">Recover hidden data from stego files</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="commands/analyze.html">
+                            <span class="icon">📊</span> Analyze Commands
+                            <span class="desc">Capacity analysis and security assessment</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="commands/archive.html">
+                            <span class="icon">📦</span> Archive Commands
+                            <span class="desc">Create and extract encrypted archives</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="commands/watermark.html">
+                            <span class="icon">🔖</span> Watermark Commands
+                            <span class="desc">PDF watermarking with quantum-resistant encryption</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="commands/keygen.html">
+                            <span class="icon">🔑</span> Key Management
+                            <span class="desc">Generate and manage cryptographic keys</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <h2>📘 Guides & Resources</h2>
+                <ul class="nav-links">
+                    <li>
+                        <a href="use-cases.html">
+                            <span class="icon">💡</span> Use Cases
+                            <span class="desc">Real-world applications and examples</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="best-practices.html">
+                            <span class="icon">✨</span> Best Practices
+                            <span class="desc">Security guidelines and recommendations</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="security.html">
+                            <span class="icon">🛡️</span> Security Model
+                            <span class="desc">Post-quantum cryptography and threat model</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="troubleshooting.html">
+                            <span class="icon">🔧</span> Troubleshooting
+                            <span class="desc">Common issues and solutions</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="faq.html">
+                            <span class="icon">❓</span> FAQ
+                            <span class="desc">Frequently asked questions</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="glossary.html">
+                            <span class="icon">📖</span> Glossary
+                            <span class="desc">Technical terms and definitions</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="nav-section">
+                <h2>🏗️ Advanced Topics</h2>
+                <ul class="nav-links">
+                    <li>
+                        <a href="architecture.html">
+                            <span class="icon">🏛️</span> Architecture
+                            <span class="desc">System design and component overview</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="guides/distributed-embedding.html">
+                            <span class="icon">🌐</span> Distributed Embedding
+                            <span class="desc">Split data across multiple carriers</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="guides/error-correction.html">
+                            <span class="icon">🔄</span> Error Correction
+                            <span class="desc">Reed-Solomon K-of-N recovery</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="guides/techniques.html">
+                            <span class="icon">🎨</span> Steganography Techniques
+                            <span class="desc">LSB, DCT, Phase, Echo, and more</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+    </div>
+
+    <footer>
+        <p>
+            <a href="../">← Back to Main Site</a> |
+            <a href="https://github.com/greysquirr3l/shadowforge" target="_blank">GitHub</a> |
+            <a href="https://github.com/greysquirr3l/shadowforge/blob/main/LICENSE" target="_blank">MIT License</a>
+        </p>
+        <p style="margin-top: 10px; font-size: 0.9rem;">
+            © 2025 Shadowforge | Quantum-Resistant Steganography Toolkit
+        </p>
+    </footer>
+</body>
+</html>

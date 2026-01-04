@@ -1,0 +1,3650 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Quantum-resistant steganography toolkit with post-quantum cryptography">
+      
+      
+        <meta name="author" content="Shadowforge Development Team">
+      
+      
+        <link rel="canonical" href="https://shadowforge.dev/cli/architecture/">
+      
+      
+        <link rel="prev" href="../troubleshooting/">
+      
+      
+        <link rel="next" href="../faq/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.1">
+    
+    
+      
+        <title>Architecture - Shadowforge Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+  
+
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#shadowforge-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Shadowforge Documentation" class="md-header__button md-logo" aria-label="Shadowforge Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.3v3.5c0 .6-.6 1.2-1.3 1.2H9.2c-.6 0-1.2-.6-1.2-1.3v-3.5c0-.6.6-1.2 1.2-1.2V9.5C9.2 8.1 10.6 7 12 7m0 1.2c-.8 0-1.5.5-1.5 1.3V11h3V9.5c0-.8-.7-1.3-1.5-1.3"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Shadowforge Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="deep-purple" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="deep-purple" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/greysquirr3l/shadowforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    greysquirr3l/shadowforge
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../installation/" class="md-tabs__link">
+          
+  
+  
+  Getting Started
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../commands/" class="md-tabs__link">
+          
+  
+  
+  Commands
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../best-practices/" class="md-tabs__link">
+          
+  
+  
+  Guides
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+  Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+  
+
+<nav class="md-nav md-nav--primary md-nav--lifted md-nav--integrated" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Shadowforge Documentation" class="md-nav__button md-logo" aria-label="Shadowforge Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 6c1.4 0 2.8 1.1 2.8 2.5V11c.6 0 1.2.6 1.2 1.3v3.5c0 .6-.6 1.2-1.3 1.2H9.2c-.6 0-1.2-.6-1.2-1.3v-3.5c0-.6.6-1.2 1.2-1.2V9.5C9.2 8.1 10.6 7 12 7m0 1.2c-.8 0-1.5.5-1.5 1.3V11h3V9.5c0-.8-.7-1.3-1.5-1.3"/></svg>
+
+    </a>
+    Shadowforge Documentation
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/greysquirr3l/shadowforge" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+  </div>
+  <div class="md-source__repository">
+    greysquirr3l/shadowforge
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Getting Started
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Getting Started
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../installation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Installation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../getting-started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Start
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../quick-reference/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Quick Reference
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Commands
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Commands
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/embed/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Embed
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/extract/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Extract
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/analyze/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Analyze
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/archive/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Archive
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/watermark/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Watermark
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/chain/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chain
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../commands/utility/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Utility
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Guides
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Guides
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../best-practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Best Practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/advanced/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Advanced Topics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../guides/security/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Security Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../use-cases/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Use Cases
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Troubleshooting
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#table-of-contents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        📋 Table of Contents
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#system-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        System Overview
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#high-level-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        High-Level Architecture
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="High-Level Architecture">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#clean-architecture-layers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Clean Architecture Layers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#project-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Project Structure
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#domain-driven-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain-Driven Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Domain-Driven Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#bounded-contexts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bounded Contexts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#aggregate-relationships" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Aggregate Relationships
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domain-events" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain Events
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domain-event-catalog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Domain Event Catalog
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cqrs-implementation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CQRS Implementation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="CQRS Implementation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#command-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Command Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Query Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#security-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Security Pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#one-to-one-encryption-pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        One-to-One Encryption Pipeline
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#distributed-pipeline-one-to-many" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distributed Pipeline (One-to-Many)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-management" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Management
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#distribution-patterns" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Distribution Patterns
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Distribution Patterns">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#pattern-comparison" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Pattern Comparison
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#threshold-recovery-k-of-n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Threshold Recovery (K of N)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#data-flow-diagrams" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Data Flow Diagrams
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Data Flow Diagrams">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cli-embed-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        CLI Embed Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-distributed-embed-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Distributed Embed Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#component-interactions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component Interactions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Component Interactions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#steganography-technique-selection" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Steganography Technique Selection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#archive-processing-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Archive Processing Flow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#technology-stack" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Technology Stack
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Technology Stack">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#dependencies-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies Overview
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#security-architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Security Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ephemeral-storage-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Ephemeral Storage Model
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#state-machines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        State Machines
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="State Machines">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#embedding-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Embedding State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#extraction-state-machine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Extraction State Machine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-design" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Design
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Design">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rest-api-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        REST API Endpoints
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#api-reference-table" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference Table
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Development Workflow">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-command" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Command
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-bounded-context" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New Bounded Context
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#testing-strategy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Testing Strategy
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#conclusion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Conclusion
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    FAQ
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../glossary/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Glossary
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../DOCUMENTATION_GUIDE/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Documentation Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+                
+
+
+
+  
+
+
+  <nav class="md-path" aria-label="Navigation" >
+    <ol class="md-path__list">
+      
+        
+  
+  
+    <li class="md-path__item">
+      <a href="../.." class="md-path__link">
+        
+  <span class="md-ellipsis">
+    Home
+  </span>
+
+      </a>
+    </li>
+  
+
+      
+      
+        
+  
+  
+    
+    
+      <li class="md-path__item">
+        <a href="./" class="md-path__link">
+          
+  <span class="md-ellipsis">
+    Reference
+  </span>
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ol>
+  </nav>
+
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="shadowforge-architecture">Shadowforge Architecture<a class="headerlink" href="#shadowforge-architecture" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>"Forge secrets in the shadows, shield them from quantum eyes"</strong></p>
+</blockquote>
+<p>A comprehensive architecture document for Shadowforge, a production-grade quantum-resistant steganography tool built with Domain-Driven Design (DDD) and CQRS patterns.</p>
+<hr />
+<h2 id="table-of-contents">📋 Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="#system-overview">System Overview</a></li>
+<li><a href="#high-level-architecture">High-Level Architecture</a></li>
+<li><a href="#domain-driven-design">Domain-Driven Design</a></li>
+<li><a href="#cqrs-implementation">CQRS Implementation</a></li>
+<li><a href="#security-pipeline">Security Pipeline</a></li>
+<li><a href="#distribution-patterns">Distribution Patterns</a></li>
+<li><a href="#data-flow-diagrams">Data Flow Diagrams</a></li>
+<li><a href="#component-interactions">Component Interactions</a></li>
+<li><a href="#technology-stack">Technology Stack</a></li>
+</ul>
+<hr />
+<h2 id="system-overview">System Overview<a class="headerlink" href="#system-overview" title="Permanent link">&para;</a></h2>
+<p>Shadowforge is a quantum-resistant steganography system that combines:</p>
+<ul>
+<li><strong>Post-Quantum Cryptography</strong> (NIST-approved Kyber-1024, Dilithium3)</li>
+<li><strong>Reed-Solomon Error Correction</strong> for data resilience</li>
+<li><strong>Multiple Steganography Techniques</strong> (LSB, DCT, Audio Phase, Text)</li>
+<li><strong>Flexible Distribution Patterns</strong> (1:1, 1:N, N:1, N:M)</li>
+</ul>
+<pre class="mermaid"><code>graph TB
+    subgraph "Shadowforge System"
+        CLI[CLI Interface&lt;br/&gt;shadowforge / sforge]
+        API[REST API&lt;br/&gt;sforge-api]
+
+        subgraph "Application Layer"
+            Commands[Command Handlers]
+            Queries[Query Handlers]
+        end
+
+        subgraph "Domain Layer"
+            Crypto[Cryptography&lt;br/&gt;Context]
+            EC[Error Correction&lt;br/&gt;Context]
+            Stego[Steganography&lt;br/&gt;Context]
+            Media[Media Processing&lt;br/&gt;Context]
+            Dist[Distribution&lt;br/&gt;Context]
+            Archive[Archive&lt;br/&gt;Context]
+        end
+
+        subgraph "Infrastructure Layer"
+            PQC[CIRCL PQC Library]
+            RS[Reed-Solomon Engine]
+            FS[File System]
+        end
+    end
+
+    CLI --&gt; Commands
+    CLI --&gt; Queries
+    API --&gt; Commands
+    API --&gt; Queries
+
+    Commands --&gt; Crypto
+    Commands --&gt; EC
+    Commands --&gt; Stego
+    Commands --&gt; Media
+    Commands --&gt; Dist
+    Commands --&gt; Archive
+
+    Queries --&gt; Media
+    Queries --&gt; Stego
+
+    Crypto --&gt; PQC
+    EC --&gt; RS
+    Media --&gt; FS
+    Archive --&gt; FS</code></pre>
+<hr />
+<h2 id="high-level-architecture">High-Level Architecture<a class="headerlink" href="#high-level-architecture" title="Permanent link">&para;</a></h2>
+<h3 id="clean-architecture-layers">Clean Architecture Layers<a class="headerlink" href="#clean-architecture-layers" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Interface Layer"
+        direction LR
+        HTTP[HTTP Controllers]
+        CLICmd[CLI Commands]
+        gRPC[gRPC Handlers]
+    end
+
+    subgraph "Application Layer"
+        direction LR
+        CmdHandlers[Command Handlers]
+        QryHandlers[Query Handlers]
+        AppServices[Application Services]
+    end
+
+    subgraph "Domain Layer"
+        direction LR
+        Entities[Entities]
+        ValueObjects[Value Objects]
+        DomainServices[Domain Services]
+        RepoInterfaces[Repository Interfaces]
+    end
+
+    subgraph "Infrastructure Layer"
+        direction LR
+        CryptoImpl[Crypto Implementations]
+        MediaImpl[Media Processors]
+        RepoImpl[Repository Implementations]
+        External[External Services]
+    end
+
+    HTTP --&gt; CmdHandlers
+    CLICmd --&gt; CmdHandlers
+    gRPC --&gt; QryHandlers
+
+    CmdHandlers --&gt; Entities
+    QryHandlers --&gt; ValueObjects
+    AppServices --&gt; DomainServices
+
+    DomainServices --&gt; RepoInterfaces
+    RepoInterfaces -.-&gt; RepoImpl
+
+    RepoImpl --&gt; CryptoImpl
+    RepoImpl --&gt; MediaImpl
+    RepoImpl --&gt; External
+
+    classDef interface fill:#e1f5fe,stroke:#01579b
+    classDef application fill:#f3e5f5,stroke:#4a148c
+    classDef domain fill:#e8f5e9,stroke:#1b5e20
+    classDef infrastructure fill:#fff3e0,stroke:#e65100
+
+    class HTTP,CLICmd,gRPC interface
+    class CmdHandlers,QryHandlers,AppServices application
+    class Entities,ValueObjects,DomainServices,RepoInterfaces domain
+    class CryptoImpl,MediaImpl,RepoImpl,External infrastructure</code></pre>
+<h3 id="project-structure">Project Structure<a class="headerlink" href="#project-structure" title="Permanent link">&para;</a></h3>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>shadowforge/
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>├── cmd/
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>│   ├── cli/                    # CLI application (shadowforge/sforge)
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>│   │   └── main.go
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>│   └── api/                    # REST API application
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>│       └── main.go
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>├── internal/
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>│   ├── domain/                 # Domain layer (core business logic)
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a>│   │   ├── crypto/             # Cryptography bounded context
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>│   │   ├── errorcorrection/    # Reed-Solomon context
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>│   │   ├── stego/              # Steganography context
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a>│   │   ├── media/              # Media processing context
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>│   │   ├── distribution/       # Distribution patterns context
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a>│   │   ├── reconstruction/     # Shard reconstruction context
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a>│   │   └── archive/            # Archive handling context
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a>│   ├── application/            # Application layer (CQRS)
+</span><span id="__span-0-17"><a id="__codelineno-0-17" name="__codelineno-0-17" href="#__codelineno-0-17"></a>│   │   ├── commands/           # Command handlers
+</span><span id="__span-0-18"><a id="__codelineno-0-18" name="__codelineno-0-18" href="#__codelineno-0-18"></a>│   │   ├── queries/            # Query handlers
+</span><span id="__span-0-19"><a id="__codelineno-0-19" name="__codelineno-0-19" href="#__codelineno-0-19"></a>│   │   └── services/           # Application services
+</span><span id="__span-0-20"><a id="__codelineno-0-20" name="__codelineno-0-20" href="#__codelineno-0-20"></a>│   ├── infrastructure/         # Infrastructure layer
+</span><span id="__span-0-21"><a id="__codelineno-0-21" name="__codelineno-0-21" href="#__codelineno-0-21"></a>│   │   ├── crypto/             # PQC implementations
+</span><span id="__span-0-22"><a id="__codelineno-0-22" name="__codelineno-0-22" href="#__codelineno-0-22"></a>│   │   ├── media/              # Media file handlers
+</span><span id="__span-0-23"><a id="__codelineno-0-23" name="__codelineno-0-23" href="#__codelineno-0-23"></a>│   │   ├── storage/            # File system operations
+</span><span id="__span-0-24"><a id="__codelineno-0-24" name="__codelineno-0-24" href="#__codelineno-0-24"></a>│   │   └── config/             # Configuration management
+</span><span id="__span-0-25"><a id="__codelineno-0-25" name="__codelineno-0-25" href="#__codelineno-0-25"></a>│   └── interfaces/             # Interface layer
+</span><span id="__span-0-26"><a id="__codelineno-0-26" name="__codelineno-0-26" href="#__codelineno-0-26"></a>│       ├── cli/                # CLI handlers
+</span><span id="__span-0-27"><a id="__codelineno-0-27" name="__codelineno-0-27" href="#__codelineno-0-27"></a>│       ├── api/                # REST API handlers
+</span><span id="__span-0-28"><a id="__codelineno-0-28" name="__codelineno-0-28" href="#__codelineno-0-28"></a>│       └── dto/                # Data transfer objects
+</span><span id="__span-0-29"><a id="__codelineno-0-29" name="__codelineno-0-29" href="#__codelineno-0-29"></a>├── pkg/                        # Public library code
+</span><span id="__span-0-30"><a id="__codelineno-0-30" name="__codelineno-0-30" href="#__codelineno-0-30"></a>├── tests/                      # Test files
+</span><span id="__span-0-31"><a id="__codelineno-0-31" name="__codelineno-0-31" href="#__codelineno-0-31"></a>└── docs/                       # Documentation
+</span></code></pre></div>
+<hr />
+<h2 id="domain-driven-design">Domain-Driven Design<a class="headerlink" href="#domain-driven-design" title="Permanent link">&para;</a></h2>
+<h3 id="bounded-contexts">Bounded Contexts<a class="headerlink" href="#bounded-contexts" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Cryptography Context"
+        CryptoAgg[CryptoPayload&lt;br/&gt;Aggregate]
+        EncData[EncryptedData]
+        KeyPair[KeyPair]
+        Signature[Signature]
+
+        CryptoAgg --&gt; EncData
+        CryptoAgg --&gt; KeyPair
+        CryptoAgg --&gt; Signature
+    end
+
+    subgraph "Error Correction Context"
+        ECMsg[ProtectedMessage&lt;br/&gt;Aggregate]
+        EncMsg[EncodedData]
+        Parity[ParityShards]
+
+        ECMsg --&gt; EncMsg
+        ECMsg --&gt; Parity
+    end
+
+    subgraph "Steganography Context"
+        StegoContainer[StegoContainer&lt;br/&gt;Aggregate]
+        Cover[CoverMedia]
+        Payload[EmbeddedPayload]
+        EmbedMap[EmbeddingMap]
+
+        StegoContainer --&gt; Cover
+        StegoContainer --&gt; Payload
+        StegoContainer --&gt; EmbedMap
+    end
+
+    subgraph "Media Processing Context"
+        MediaAsset[MediaAsset&lt;br/&gt;Aggregate]
+        ImageFile[ImageFile]
+        AudioFile[AudioFile]
+        TextFile[TextFile]
+
+        MediaAsset --&gt; ImageFile
+        MediaAsset --&gt; AudioFile
+        MediaAsset --&gt; TextFile
+    end
+
+    subgraph "Security Analysis Context"
+        SecAnalysis[SecurityAnalysis&lt;br/&gt;Aggregate]
+        ChiSquare[ChiSquareTest]
+        RSAnalysis[RSAnalysis]
+        DetectScore[DetectabilityScore]
+
+        SecAnalysis --&gt; ChiSquare
+        SecAnalysis --&gt; RSAnalysis
+        SecAnalysis --&gt; DetectScore
+    end
+
+    subgraph "Distribution Context"
+        DistStrategy[DistributionStrategy&lt;br/&gt;Aggregate]
+        Manifest[ShardManifest]
+        ShardMap[ShardMapping]
+        Plan[DistributionPlan]
+
+        DistStrategy --&gt; Manifest
+        DistStrategy --&gt; ShardMap
+        DistStrategy --&gt; Plan
+    end
+
+    subgraph "Reconstruction Context"
+        ReconSession[ReconstructionSession&lt;br/&gt;Aggregate]
+        ShardColl[ShardCollection]
+        RecoveryAttempt[RecoveryAttempt]
+        RecoveryStatus[RecoveryStatus]
+
+        ReconSession --&gt; ShardColl
+        ReconSession --&gt; RecoveryAttempt
+        ReconSession --&gt; RecoveryStatus
+    end
+
+    subgraph "Archive Context"
+        ArchiveAgg[Archive&lt;br/&gt;Aggregate]
+        Container[ArchiveContainer]
+        Entry[ArchiveEntry]
+
+        ArchiveAgg --&gt; Container
+        ArchiveAgg --&gt; Entry
+    end
+
+    CryptoAgg -.-&gt;|encrypts| ECMsg
+    ECMsg -.-&gt;|encodes| StegoContainer
+    StegoContainer -.-&gt;|embeds in| MediaAsset
+    SecAnalysis -.-&gt;|analyzes| StegoContainer
+    DistStrategy -.-&gt;|coordinates| StegoContainer
+    ReconSession -.-&gt;|reconstructs from| DistStrategy
+    ArchiveAgg -.-&gt;|packages| MediaAsset</code></pre>
+<h3 id="aggregate-relationships">Aggregate Relationships<a class="headerlink" href="#aggregate-relationships" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>classDiagram
+    class CryptoPayload {
+        +ID CryptoPayloadID
+        +Data []byte
+        +Algorithm PQCAlgorithm
+        +Encrypt() error
+        +Decrypt() error
+        +Sign() error
+        +Verify() bool
+    }
+
+    class ProtectedMessage {
+        +ID MessageID
+        +DataShards int
+        +ParityShards int
+        +Encode() []Shard
+        +Decode(shards []Shard) []byte
+        +CanRecover(available int) bool
+    }
+
+    class StegoContainer {
+        +ID ContainerID
+        +CoverMedia MediaAsset
+        +Technique StegoTechnique
+        +Capacity int64
+        +Embed(data []byte) error
+        +Extract() []byte
+        +AnalyzeDetectability() float64
+    }
+
+    class MediaAsset {
+        +ID AssetID
+        +Type MediaType
+        +Format string
+        +Dimensions Dimensions
+        +Sanitize() error
+        +CalculateCapacity() int64
+    }
+
+    class DistributionStrategy {
+        +Pattern PatternType
+        +TotalShards int
+        +Threshold int
+        +CreatePlan() DistributionPlan
+        +GenerateManifest() ShardManifest
+    }
+
+    class Archive {
+        +ID ArchiveID
+        +Format ArchiveFormat
+        +Entries []ArchiveEntry
+        +Extract() []MediaAsset
+        +Create(assets []MediaAsset) error
+    }
+
+    class SecurityAnalysis {
+        +ID AnalysisID
+        +Target StegoContainer
+        +ChiSquareScore float64
+        +RSAnalysisScore float64
+        +Analyze() DetectabilityReport
+        +CalculateCapacity() int64
+        +VerifyIntegrity() bool
+    }
+
+    class ReconstructionSession {
+        +ID SessionID
+        +Manifest ShardManifest
+        +CollectedShards []Shard
+        +Status RecoveryStatus
+        +CollectShard(shard Shard) error
+        +CanReconstruct() bool
+        +Reconstruct() []byte
+        +GetProgress() float64
+    }
+
+    CryptoPayload --&gt; ProtectedMessage : encrypts to
+    ProtectedMessage --&gt; StegoContainer : encodes to
+    StegoContainer --&gt; MediaAsset : embeds in
+    SecurityAnalysis --&gt; StegoContainer : analyzes
+    DistributionStrategy --&gt; StegoContainer : coordinates
+    ReconstructionSession --&gt; DistributionStrategy : reconstructs from
+    Archive --&gt; MediaAsset : contains</code></pre>
+<h3 id="domain-events">Domain Events<a class="headerlink" href="#domain-events" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Cmd as Command Handler
+    participant Crypto as Crypto Domain
+    participant EC as Error Correction
+    participant Stego as Steganography
+    participant Analysis as Security Analysis
+    participant Recon as Reconstruction
+    participant Archive as Archive
+    participant EventBus as Event Bus
+
+    Cmd-&gt;&gt;Crypto: Encrypt Payload
+    Crypto-&gt;&gt;EventBus: PayloadEncrypted
+
+    Cmd-&gt;&gt;EC: Encode with RS
+    EC-&gt;&gt;EventBus: DataEncoded
+
+    Cmd-&gt;&gt;EC: Create Shards
+    EC-&gt;&gt;EventBus: DataSharded
+
+    loop For each shard
+        Cmd-&gt;&gt;Stego: Embed Shard
+        Stego-&gt;&gt;EventBus: ShardEmbedded
+    end
+
+    Cmd-&gt;&gt;EventBus: MessageEmbedded
+    Cmd-&gt;&gt;EventBus: ManifestGenerated
+
+    Note over EventBus: Events can trigger:&lt;br/&gt;- Audit logging&lt;br/&gt;- Progress tracking&lt;br/&gt;- Metrics collection</code></pre>
+<h3 id="domain-event-catalog">Domain Event Catalog<a class="headerlink" href="#domain-event-catalog" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Event</th>
+<th>Context</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PayloadEncrypted</code></td>
+<td>Cryptography</td>
+<td>Payload encrypted with Kyber KEM</td>
+</tr>
+<tr>
+<td><code>DataEncoded</code></td>
+<td>Error Correction</td>
+<td>Reed-Solomon encoding complete</td>
+</tr>
+<tr>
+<td><code>DataSharded</code></td>
+<td>Distribution</td>
+<td>Data split into shards</td>
+</tr>
+<tr>
+<td><code>ShardEmbedded</code></td>
+<td>Steganography</td>
+<td>Single shard embedded in carrier</td>
+</tr>
+<tr>
+<td><code>MessageEmbedded</code></td>
+<td>Steganography</td>
+<td>Full message embedding complete</td>
+</tr>
+<tr>
+<td><code>ShardExtracted</code></td>
+<td>Steganography</td>
+<td>Single shard extracted from carrier</td>
+</tr>
+<tr>
+<td><code>MessageExtracted</code></td>
+<td>Steganography</td>
+<td>Full message extraction complete</td>
+</tr>
+<tr>
+<td><code>ShardsReconstructed</code></td>
+<td>Reconstruction</td>
+<td>Shards reassembled</td>
+</tr>
+<tr>
+<td><code>IntegrityVerified</code></td>
+<td>Security Analysis</td>
+<td>Digital signature verified</td>
+</tr>
+<tr>
+<td><code>CorruptionDetected</code></td>
+<td>Error Correction</td>
+<td>Data corruption found</td>
+</tr>
+<tr>
+<td><code>ManifestGenerated</code></td>
+<td>Distribution</td>
+<td>Shard manifest created</td>
+</tr>
+<tr>
+<td><code>RecoveryCompleted</code></td>
+<td>Reconstruction</td>
+<td>Partial recovery successful</td>
+</tr>
+<tr>
+<td><code>ArchiveExtracted</code></td>
+<td>Archive</td>
+<td>Archive contents extracted</td>
+</tr>
+<tr>
+<td><code>ArchiveCreated</code></td>
+<td>Archive</td>
+<td>New archive packaged</td>
+</tr>
+<tr>
+<td><code>MediaExtractedFromArchive</code></td>
+<td>Archive</td>
+<td>Media file extracted from archive</td>
+</tr>
+<tr>
+<td><code>StegoMediaPackaged</code></td>
+<td>Archive</td>
+<td>Stego media added to archive</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="cqrs-implementation">CQRS Implementation<a class="headerlink" href="#cqrs-implementation" title="Permanent link">&para;</a></h2>
+<h3 id="command-flow">Command Flow<a class="headerlink" href="#command-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph LR
+    subgraph "Embed Commands"
+        EmbedCmd[EmbedCommand]
+        EmbedDistCmd[EmbedDistributedCommand]
+        EmbedBatchCmd[EmbedBatchCommand]
+        EmbedMatrixCmd[EmbedMatrixCommand]
+    end
+
+    subgraph "Extract Commands"
+        ExtractCmd[ExtractCommand]
+        ExtractDistCmd[ExtractDistributedCommand]
+        ExtractMatrixCmd[ExtractMatrixCommand]
+    end
+
+    subgraph "Utility Commands"
+        KeyGenCmd[GenerateKeyPairCommand]
+        ArchiveCmd[CreateArchiveCommand]
+        AnalyzeCmd[AnalyzeSecurityCommand]
+    end
+
+    subgraph "Command Handlers"
+        EmbedHandler[EmbedCommandHandler]
+        EmbedDistHandler[EmbedDistributedHandler]
+        EmbedBatchHandler[EmbedBatchHandler]
+        EmbedMatrixHandler[EmbedMatrixHandler]
+        ExtractHandler[ExtractCommandHandler]
+        ExtractDistHandler[ExtractDistributedHandler]
+        ExtractMatrixHandler[ExtractMatrixHandler]
+        KeyGenHandler[KeyGenerationHandler]
+        ArchiveHandler[ArchiveCommandHandler]
+        AnalyzeHandler[AnalyzeSecurityHandler]
+    end
+
+    subgraph "Domain Services"
+        CryptoSvc[CryptoService]
+        ECSvc[ErrorCorrectionService]
+        StegoSvc[SteganographyService]
+        MediaSvc[MediaService]
+        AnalysisSvc[SecurityAnalysisService]
+        ArchiveSvc[ArchiveService]
+    end
+
+    EmbedCmd --&gt; EmbedHandler
+    EmbedDistCmd --&gt; EmbedDistHandler
+    EmbedBatchCmd --&gt; EmbedBatchHandler
+    EmbedMatrixCmd --&gt; EmbedMatrixHandler
+    ExtractCmd --&gt; ExtractHandler
+    ExtractDistCmd --&gt; ExtractDistHandler
+    ExtractMatrixCmd --&gt; ExtractMatrixHandler
+    KeyGenCmd --&gt; KeyGenHandler
+    ArchiveCmd --&gt; ArchiveHandler
+    AnalyzeCmd --&gt; AnalyzeHandler
+
+    EmbedHandler --&gt; CryptoSvc
+    EmbedHandler --&gt; ECSvc
+    EmbedHandler --&gt; StegoSvc
+
+    EmbedDistHandler --&gt; CryptoSvc
+    EmbedDistHandler --&gt; ECSvc
+    EmbedDistHandler --&gt; StegoSvc
+
+    EmbedMatrixHandler --&gt; CryptoSvc
+    EmbedMatrixHandler --&gt; ECSvc
+    EmbedMatrixHandler --&gt; StegoSvc
+
+    ExtractHandler --&gt; StegoSvc
+    ExtractHandler --&gt; ECSvc
+    ExtractHandler --&gt; CryptoSvc
+
+    ExtractDistHandler --&gt; StegoSvc
+    ExtractDistHandler --&gt; ECSvc
+    ExtractDistHandler --&gt; CryptoSvc
+
+    ArchiveHandler --&gt; ArchiveSvc
+    ArchiveHandler --&gt; MediaSvc
+
+    AnalyzeHandler --&gt; AnalysisSvc
+    AnalyzeHandler --&gt; StegoSvc</code></pre>
+<h3 id="query-flow">Query Flow<a class="headerlink" href="#query-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph LR
+    subgraph "Queries"
+        CapQuery[GetCapacityQuery]
+        DistCapQuery[GetDistributedCapacityQuery]
+        ValidQuery[ValidateStegoMediaQuery]
+        FormatQuery[GetSupportedFormatsQuery]
+        DetectQuery[AnalyzeDetectabilityQuery]
+        ArchiveQuery[GetArchiveInfoQuery]
+        ManifestQuery[GetManifestQuery]
+    end
+
+    subgraph "Query Handlers"
+        CapHandler[CapacityQueryHandler]
+        DistCapHandler[DistributedCapacityHandler]
+        ValidHandler[ValidationQueryHandler]
+        FormatHandler[FormatQueryHandler]
+        DetectHandler[DetectabilityQueryHandler]
+        ArchiveHandler[ArchiveInfoQueryHandler]
+        ManifestHandler[ManifestQueryHandler]
+    end
+
+    subgraph "Read Models"
+        MediaInfo[MediaInformation]
+        FormatList[FormatList]
+        Analysis[AnalysisResults]
+        ArchiveInfo[ArchiveInformation]
+        ManifestInfo[ManifestInformation]
+    end
+
+    CapQuery --&gt; CapHandler
+    DistCapQuery --&gt; DistCapHandler
+    ValidQuery --&gt; ValidHandler
+    FormatQuery --&gt; FormatHandler
+    DetectQuery --&gt; DetectHandler
+    ArchiveQuery --&gt; ArchiveHandler
+    ManifestQuery --&gt; ManifestHandler
+
+    CapHandler --&gt; MediaInfo
+    ValidHandler --&gt; MediaInfo
+    FormatHandler --&gt; FormatList
+    DetectHandler --&gt; Analysis</code></pre>
+<hr />
+<h2 id="security-pipeline">Security Pipeline<a class="headerlink" href="#security-pipeline" title="Permanent link">&para;</a></h2>
+<h3 id="one-to-one-encryption-pipeline">One-to-One Encryption Pipeline<a class="headerlink" href="#one-to-one-encryption-pipeline" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph LR
+    subgraph "Input"
+        Raw[Raw Payload]
+    end
+
+    subgraph "Encryption Stage"
+        KDF[Key Derivation&lt;br/&gt;Argon2id]
+        Kyber[Kyber-1024&lt;br/&gt;Encapsulation]
+        AES[AES-256-GCM&lt;br/&gt;Encryption]
+    end
+
+    subgraph "Signing Stage"
+        Dilithium[Dilithium3&lt;br/&gt;Signature]
+    end
+
+    subgraph "Error Correction"
+        RS[Reed-Solomon&lt;br/&gt;Encoding]
+    end
+
+    subgraph "Embedding"
+        Stego[Steganographic&lt;br/&gt;Embedding]
+    end
+
+    subgraph "Output"
+        Cover[Cover Media]
+        StegoMedia[Stego Media]
+    end
+
+    Raw --&gt; KDF
+    KDF --&gt; Kyber
+    Kyber --&gt; AES
+    AES --&gt; Dilithium
+    Dilithium --&gt; RS
+    RS --&gt; Stego
+    Cover --&gt; Stego
+    Stego --&gt; StegoMedia</code></pre>
+<h3 id="distributed-pipeline-one-to-many">Distributed Pipeline (One-to-Many)<a class="headerlink" href="#distributed-pipeline-one-to-many" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Input"
+        Payload[Payload File]
+    end
+
+    subgraph "Encryption"
+        Encrypt[PQC Encryption&lt;br/&gt;Kyber-1024]
+    end
+
+    subgraph "Error Correction"
+        RS[Reed-Solomon&lt;br/&gt;Sharding]
+        Shards[Data Shards + Parity Shards]
+    end
+
+    subgraph "Distribution"
+        Coordinator[Distribution&lt;br/&gt;Coordinator]
+    end
+
+    subgraph "Cover Media Pool"
+        Cover1[Cover 1]
+        Cover2[Cover 2]
+        Cover3[Cover 3]
+        CoverN[Cover N]
+    end
+
+    subgraph "Embedding"
+        Embed1[Embedder 1]
+        Embed2[Embedder 2]
+        Embed3[Embedder 3]
+        EmbedN[Embedder N]
+    end
+
+    subgraph "Output"
+        Stego1[Stego 1]
+        Stego2[Stego 2]
+        Stego3[Stego 3]
+        StegoN[Stego N]
+        Manifest[Manifest]
+    end
+
+    Payload --&gt; Encrypt
+    Encrypt --&gt; RS
+    RS --&gt; Shards
+    Shards --&gt; Coordinator
+
+    Coordinator --&gt; Embed1
+    Coordinator --&gt; Embed2
+    Coordinator --&gt; Embed3
+    Coordinator --&gt; EmbedN
+
+    Cover1 --&gt; Embed1
+    Cover2 --&gt; Embed2
+    Cover3 --&gt; Embed3
+    CoverN --&gt; EmbedN
+
+    Embed1 --&gt; Stego1
+    Embed2 --&gt; Stego2
+    Embed3 --&gt; Stego3
+    EmbedN --&gt; StegoN
+
+    Coordinator --&gt; Manifest</code></pre>
+<h3 id="key-management">Key Management<a class="headerlink" href="#key-management" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Key Derivation"
+        Password[User Password]
+        Salt[Random Salt]
+        Argon2[Argon2id KDF]
+        MasterKey[Master Key]
+
+        Password --&gt; Argon2
+        Salt --&gt; Argon2
+        Argon2 --&gt; MasterKey
+    end
+
+    subgraph "Sub-Key Derivation"
+        HKDF[HKDF-SHA256]
+        EncKey[Encryption Key]
+        MACKey[MAC Key]
+        EmbedKey[Embedding Pattern Key]
+        NoiseKey[Noise Generation Key]
+
+        MasterKey --&gt; HKDF
+        HKDF --&gt; EncKey
+        HKDF --&gt; MACKey
+        HKDF --&gt; EmbedKey
+        HKDF --&gt; NoiseKey
+    end
+
+    subgraph "PQC Keys"
+        KyberKP[Kyber-1024&lt;br/&gt;Key Pair]
+        DilithiumKP[Dilithium3&lt;br/&gt;Key Pair]
+
+        EncKey --&gt; KyberKP
+        MACKey --&gt; DilithiumKP
+    end</code></pre>
+<hr />
+<h2 id="distribution-patterns">Distribution Patterns<a class="headerlink" href="#distribution-patterns" title="Permanent link">&para;</a></h2>
+<h3 id="pattern-comparison">Pattern Comparison<a class="headerlink" href="#pattern-comparison" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "One-to-One"
+        O2O_In[1 Payload]
+        O2O_Cover[1 Cover]
+        O2O_Out[1 Stego]
+
+        O2O_In --&gt; O2O_Cover
+        O2O_Cover --&gt; O2O_Out
+    end
+
+    subgraph "One-to-Many"
+        O2M_In[1 Payload]
+        O2M_Shard[N Shards]
+        O2M_Cover1[Cover 1]
+        O2M_Cover2[Cover 2]
+        O2M_CoverN[Cover N]
+        O2M_Out1[Stego 1]
+        O2M_Out2[Stego 2]
+        O2M_OutN[Stego N]
+
+        O2M_In --&gt; O2M_Shard
+        O2M_Shard --&gt; O2M_Cover1
+        O2M_Shard --&gt; O2M_Cover2
+        O2M_Shard --&gt; O2M_CoverN
+        O2M_Cover1 --&gt; O2M_Out1
+        O2M_Cover2 --&gt; O2M_Out2
+        O2M_CoverN --&gt; O2M_OutN
+    end
+
+    subgraph "Many-to-One"
+        M2O_In1[Payload 1]
+        M2O_In2[Payload 2]
+        M2O_InN[Payload N]
+        M2O_Cover[1 Cover]
+        M2O_Out[1 Stego]
+
+        M2O_In1 --&gt; M2O_Cover
+        M2O_In2 --&gt; M2O_Cover
+        M2O_InN --&gt; M2O_Cover
+        M2O_Cover --&gt; M2O_Out
+    end
+
+    subgraph "Many-to-Many"
+        M2M_In1[Payload 1]
+        M2M_In2[Payload 2]
+        M2M_Cover1[Cover 1]
+        M2M_Cover2[Cover 2]
+        M2M_Out1[Stego 1]
+        M2M_Out2[Stego 2]
+
+        M2M_In1 --&gt; M2M_Cover1
+        M2M_In1 --&gt; M2M_Cover2
+        M2M_In2 --&gt; M2M_Cover1
+        M2M_In2 --&gt; M2M_Cover2
+        M2M_Cover1 --&gt; M2M_Out1
+        M2M_Cover2 --&gt; M2M_Out2
+    end</code></pre>
+<h3 id="threshold-recovery-k-of-n">Threshold Recovery (K of N)<a class="headerlink" href="#threshold-recovery-k-of-n" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph LR
+    subgraph "Original Data"
+        Data[Secret Document]
+    end
+
+    subgraph "Sharding (10 Data + 5 Parity)"
+        S1[Shard 1]
+        S2[Shard 2]
+        S3[Shard 3]
+        S4[Shard 4]
+        S5[Shard 5]
+        S6[...]
+        S15[Shard 15]
+    end
+
+    subgraph "Distribution"
+        Stego1[Image 1&lt;br/&gt;Shard 1]
+        Stego2[Image 2&lt;br/&gt;Shard 2]
+        Stego3[Image 3&lt;br/&gt;Shard 3]
+        Lost1[Image 4 ❌]
+        Lost2[Image 5 ❌]
+        Stego6[...]
+        Stego15[Image 15&lt;br/&gt;Shard 15]
+    end
+
+    subgraph "Recovery"
+        Collect[Collect K=10&lt;br/&gt;Available Shards]
+        RS[Reed-Solomon&lt;br/&gt;Reconstruction]
+        Recovered[Recovered&lt;br/&gt;Document]
+    end
+
+    Data --&gt; S1
+    Data --&gt; S2
+    Data --&gt; S3
+    Data --&gt; S4
+    Data --&gt; S5
+    Data --&gt; S6
+    Data --&gt; S15
+
+    S1 --&gt; Stego1
+    S2 --&gt; Stego2
+    S3 --&gt; Stego3
+    S6 --&gt; Stego6
+    S15 --&gt; Stego15
+
+    Stego1 --&gt; Collect
+    Stego2 --&gt; Collect
+    Stego3 --&gt; Collect
+    Stego6 --&gt; Collect
+    Stego15 --&gt; Collect
+
+    Collect --&gt; RS
+    RS --&gt; Recovered
+
+    Note1[Need any 10 of 15&lt;br/&gt;shards to recover]</code></pre>
+<hr />
+<h2 id="data-flow-diagrams">Data Flow Diagrams<a class="headerlink" href="#data-flow-diagrams" title="Permanent link">&para;</a></h2>
+<h3 id="cli-embed-flow">CLI Embed Flow<a class="headerlink" href="#cli-embed-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant User
+    participant CLI as CLI Command
+    participant Handler as EmbedCommandHandler
+    participant Crypto as CryptoService
+    participant EC as ErrorCorrectionService
+    participant Stego as StegoService
+    participant Media as MediaService
+    participant FS as FileSystem
+
+    User-&gt;&gt;CLI: shadowforge embed --input secret.txt --cover image.png
+    CLI-&gt;&gt;CLI: Parse flags &amp; validate
+    CLI-&gt;&gt;Handler: EmbedCommand{payload, cover, options}
+
+    Handler-&gt;&gt;FS: Read payload file
+    FS--&gt;&gt;Handler: []byte
+
+    Handler-&gt;&gt;Media: Load cover media
+    Media-&gt;&gt;FS: Read image file
+    FS--&gt;&gt;Media: image.Image
+    Media--&gt;&gt;Handler: MediaAsset
+
+    Handler-&gt;&gt;Crypto: Encrypt(payload, publicKey)
+    Crypto-&gt;&gt;Crypto: Kyber encapsulation
+    Crypto-&gt;&gt;Crypto: AES-GCM encryption
+    Crypto-&gt;&gt;Crypto: Dilithium signature
+    Crypto--&gt;&gt;Handler: EncryptedPayload
+
+    Handler-&gt;&gt;EC: Encode(encryptedPayload, redundancy)
+    EC-&gt;&gt;EC: Reed-Solomon encoding
+    EC--&gt;&gt;Handler: EncodedData
+
+    Handler-&gt;&gt;Stego: Embed(encodedData, mediaAsset, technique)
+    Stego-&gt;&gt;Stego: Calculate embedding positions
+    Stego-&gt;&gt;Stego: Embed data
+    Stego--&gt;&gt;Handler: StegoMedia
+
+    Handler-&gt;&gt;FS: Write stego media
+    FS--&gt;&gt;Handler: success
+
+    Handler--&gt;&gt;CLI: EmbedResult{outputPath, stats}
+    CLI--&gt;&gt;User: ✅ Embedded successfully</code></pre>
+<h3 id="api-distributed-embed-flow">API Distributed Embed Flow<a class="headerlink" href="#api-distributed-embed-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>sequenceDiagram
+    participant Client
+    participant API as REST API
+    participant Auth as Auth Middleware
+    participant Handler as DistributedHandler
+    participant Coord as DistributionCoordinator
+    participant Pool as WorkerPool
+
+    Client-&gt;&gt;API: POST /api/v1/embed/distributed
+    API-&gt;&gt;Auth: Validate JWT
+    Auth--&gt;&gt;API: Authorized
+
+    API-&gt;&gt;Handler: EmbedDistributedCommand
+    Handler-&gt;&gt;Handler: Validate inputs
+
+    Handler-&gt;&gt;Coord: CreateDistributionPlan(payload, covers, config)
+    Coord-&gt;&gt;Coord: Calculate shard allocation
+    Coord-&gt;&gt;Coord: Generate manifest
+    Coord--&gt;&gt;Handler: DistributionPlan
+
+    Handler-&gt;&gt;Pool: Execute parallel embedding
+
+    par Parallel Embedding
+        Pool-&gt;&gt;Pool: Embed shard 1 in cover 1
+        Pool-&gt;&gt;Pool: Embed shard 2 in cover 2
+        Pool-&gt;&gt;Pool: Embed shard N in cover N
+    end
+
+    Pool--&gt;&gt;Handler: []StegoMedia
+
+    Handler-&gt;&gt;Handler: Package with manifest
+    Handler--&gt;&gt;API: DistributedResult
+
+    API--&gt;&gt;Client: 200 OK {stegoBundle, manifest}</code></pre>
+<hr />
+<h2 id="component-interactions">Component Interactions<a class="headerlink" href="#component-interactions" title="Permanent link">&para;</a></h2>
+<h3 id="steganography-technique-selection">Steganography Technique Selection<a class="headerlink" href="#steganography-technique-selection" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Input Analysis"
+        Media[Input Media]
+        Analyze[Media Analyzer]
+
+        Media --&gt; Analyze
+    end
+
+    subgraph "Technique Selection"
+        Selector[Technique Selector]
+
+        LSB[LSB Embedder]
+        DCT[DCT Embedder]
+        Phase[Phase Embedder]
+        Echo[Echo Embedder]
+        ZeroWidth[Zero-Width Embedder]
+        Palette[Palette Embedder]
+    end
+
+    subgraph "Decision Logic"
+        PNG{PNG/BMP?}
+        JPEG{JPEG?}
+        WAV{WAV?}
+        TXT{Text?}
+        GIF{GIF?}
+    end
+
+    Analyze --&gt; Selector
+    Selector --&gt; PNG
+    Selector --&gt; JPEG
+    Selector --&gt; WAV
+    Selector --&gt; TXT
+    Selector --&gt; GIF
+
+    PNG --&gt;|Yes| LSB
+    JPEG --&gt;|Yes| DCT
+    WAV --&gt;|Yes| Phase
+    WAV --&gt;|Yes| Echo
+    TXT --&gt;|Yes| ZeroWidth
+    GIF --&gt;|Yes| Palette</code></pre>
+<h3 id="archive-processing-flow">Archive Processing Flow<a class="headerlink" href="#archive-processing-flow" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Input Detection"
+        Input[Input Path]
+        Detector[Format Detector]
+
+        Input --&gt; Detector
+    end
+
+    subgraph "Archive Handling"
+        ZIP[ZIP Handler]
+        TAR[TAR Handler]
+        TARGZ[TAR.GZ Handler]
+
+        Detector --&gt;|.zip| ZIP
+        Detector --&gt;|.tar| TAR
+        Detector --&gt;|.tar.gz| TARGZ
+    end
+
+    subgraph "Extraction"
+        Extractor[Secure Extractor]
+        Validation[Path Validation]
+
+        ZIP --&gt; Extractor
+        TAR --&gt; Extractor
+        TARGZ --&gt; Extractor
+
+        Extractor --&gt; Validation
+    end
+
+    subgraph "Media Collection"
+        MediaList[Media Asset List]
+
+        Validation --&gt; MediaList
+    end
+
+    subgraph "Processing"
+        Processor[Batch Processor]
+
+        MediaList --&gt; Processor
+    end</code></pre>
+<hr />
+<h2 id="technology-stack">Technology Stack<a class="headerlink" href="#technology-stack" title="Permanent link">&para;</a></h2>
+<h3 id="dependencies-overview">Dependencies Overview<a class="headerlink" href="#dependencies-overview" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Application"
+        Shadowforge[Shadowforge]
+    end
+
+    subgraph "CLI Framework"
+        Cobra[spf13/cobra]
+        Viper[spf13/viper]
+    end
+
+    subgraph "API Framework"
+        Echo[labstack/echo]
+        JWT[golang-jwt/jwt]
+    end
+
+    subgraph "Cryptography"
+        CIRCL[cloudflare/circl]
+        Kyber[Kyber-1024]
+        Dilithium[Dilithium3]
+    end
+
+    subgraph "Error Correction"
+        RS[klauspost/reedsolomon]
+    end
+
+    subgraph "Media Processing"
+        ImageStd[image/*]
+        Audio[go-audio/wav]
+        Resize[nfnt/resize]
+    end
+
+    subgraph "Archive"
+        ArchiveZIP[archive/zip]
+        ArchiveTAR[archive/tar]
+        Gzip[compress/gzip]
+    end
+
+    subgraph "Utilities"
+        UUID[google/uuid]
+        Slog[log/slog]
+    end
+
+    Shadowforge --&gt; Cobra
+    Shadowforge --&gt; Echo
+    Shadowforge --&gt; CIRCL
+    Shadowforge --&gt; RS
+    Shadowforge --&gt; ImageStd
+    Shadowforge --&gt; ArchiveZIP
+    Shadowforge --&gt; UUID
+
+    Cobra --&gt; Viper
+    Echo --&gt; JWT
+    CIRCL --&gt; Kyber
+    CIRCL --&gt; Dilithium
+    ImageStd --&gt; Resize
+    Audio --&gt; ImageStd
+    ArchiveZIP --&gt; ArchiveTAR
+    ArchiveTAR --&gt; Gzip</code></pre>
+<h3 id="security-architecture">Security Architecture<a class="headerlink" href="#security-architecture" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Defense in Depth"
+        Layer1[Input Validation]
+        Layer2[Authentication]
+        Layer3[Authorization]
+        Layer4[Encryption]
+        Layer5[Integrity]
+        Layer6[Audit Logging]
+    end
+
+    subgraph "Cryptographic Controls"
+        PQC[Post-Quantum&lt;br/&gt;Encryption]
+        Signatures[Digital&lt;br/&gt;Signatures]
+        KDF[Key&lt;br/&gt;Derivation]
+        ConstTime[Constant-Time&lt;br/&gt;Operations]
+    end
+
+    subgraph "Data Protection"
+        Sanitize[Metadata&lt;br/&gt;Sanitization]
+        SecureMem[Secure Memory&lt;br/&gt;Handling]
+        KeyZero[Key Zeroing]
+    end
+
+    subgraph "Ephemeral Storage"
+        NoPersis[NO Persistent&lt;br/&gt;Storage]
+        EncTemp[Encrypted Temp&lt;br/&gt;Storage Only]
+        AutoShred[Auto-Shred&lt;br/&gt;on Exit]
+    end
+
+    Layer1 --&gt; Layer2
+    Layer2 --&gt; Layer3
+    Layer3 --&gt; Layer4
+    Layer4 --&gt; Layer5
+    Layer5 --&gt; Layer6
+
+    Layer4 --&gt; PQC
+    Layer4 --&gt; Signatures
+    Layer4 --&gt; KDF
+    Layer4 --&gt; ConstTime
+
+    Layer5 --&gt; Sanitize
+    Layer5 --&gt; SecureMem
+    Layer5 --&gt; KeyZero
+
+    Layer6 --&gt; NoPersis
+    NoPersis --&gt; EncTemp
+    EncTemp --&gt; AutoShred</code></pre>
+<h3 id="ephemeral-storage-model">Ephemeral Storage Model<a class="headerlink" href="#ephemeral-storage-model" title="Permanent link">&para;</a></h3>
+<p><strong>⚠️ CRITICAL SECURITY DECISION: NO PERSISTENT STORAGE</strong></p>
+<p>Shadowforge follows an <strong>ephemeral-only</strong> storage model:</p>
+<div class="language-text highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>┌──────────────────────────────────────────────────────┐
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>│ &quot;If it&#39;s not in RAM actively being processed,       │
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>│  it shouldn&#39;t exist at all.&quot;                         │
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>└──────────────────────────────────────────────────────┘
+</span></code></pre></div>
+<p><strong>Storage by Deployment Mode:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>Storage Pattern</th>
+<th>Security Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>CLI</strong></td>
+<td>Direct file I/O, NO repository</td>
+<td>✅ Zero persistence<br/>✅ User-controlled files<br/>✅ Secure memory zeroing</td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>EncryptedTempRepository<br/>(tmpfs, 5-min TTL)</td>
+<td>✅ Encrypted at rest<br/>✅ Session-scoped keys<br/>✅ Auto-delete on send</td>
+</tr>
+<tr>
+<td><strong>Tests</strong></td>
+<td>MemoryRepository<br/>(⚠️ TEST ONLY)</td>
+<td>⚠️ No encryption<br/>⚠️ No persistence<br/>✅ Fast isolation</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Production repositories (PostgreSQL, S3) are EXPLICITLY NOT USED</strong> to prevent:
+- Forensic evidence creation
+- Server seizure data exposure
+- Database compromise attacks
+- Insider data exfiltration</p>
+<p>See <a href="../guides/security/">Security Hardening Guide</a> for complete design and security considerations.</p>
+<hr />
+<h2 id="state-machines">State Machines<a class="headerlink" href="#state-machines" title="Permanent link">&para;</a></h2>
+<h3 id="embedding-state-machine">Embedding State Machine<a class="headerlink" href="#embedding-state-machine" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Initialized
+
+    Initialized --&gt; Validating : validate()
+    Validating --&gt; ValidationFailed : invalid
+    Validating --&gt; Encrypting : valid
+
+    ValidationFailed --&gt; [*]
+
+    Encrypting --&gt; EncryptionFailed : error
+    Encrypting --&gt; Encoding : success
+
+    EncryptionFailed --&gt; [*]
+
+    Encoding --&gt; EncodingFailed : error
+    Encoding --&gt; Embedding : success
+
+    EncodingFailed --&gt; [*]
+
+    Embedding --&gt; EmbeddingFailed : error
+    Embedding --&gt; Finalizing : success
+
+    EmbeddingFailed --&gt; [*]
+
+    Finalizing --&gt; Completed : success
+    Finalizing --&gt; FinalizingFailed : error
+
+    FinalizingFailed --&gt; [*]
+    Completed --&gt; [*]
+
+    state Encrypting {
+        [*] --&gt; KeyDerivation
+        KeyDerivation --&gt; KyberEncap
+        KyberEncap --&gt; AESEncrypt
+        AESEncrypt --&gt; DilithiumSign
+        DilithiumSign --&gt; [*]
+    }
+
+    state Encoding {
+        [*] --&gt; CalculateShards
+        CalculateShards --&gt; ReedSolomonEncode
+        ReedSolomonEncode --&gt; [*]
+    }</code></pre>
+<h3 id="extraction-state-machine">Extraction State Machine<a class="headerlink" href="#extraction-state-machine" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>stateDiagram-v2
+    [*] --&gt; Initialized
+
+    Initialized --&gt; Loading : load()
+    Loading --&gt; LoadFailed : error
+    Loading --&gt; Detecting : success
+
+    LoadFailed --&gt; [*]
+
+    Detecting --&gt; NotStego : no_data
+    Detecting --&gt; Extracting : detected
+
+    NotStego --&gt; [*]
+
+    Extracting --&gt; ExtractionFailed : error
+    Extracting --&gt; Decoding : success
+
+    ExtractionFailed --&gt; [*]
+
+    Decoding --&gt; DecodingFailed : error
+    Decoding --&gt; Decrypting : success
+
+    DecodingFailed --&gt; PartialRecovery : can_recover
+    DecodingFailed --&gt; [*] : cannot_recover
+
+    PartialRecovery --&gt; Decrypting
+
+    Decrypting --&gt; DecryptionFailed : error
+    Decrypting --&gt; Verifying : success
+
+    DecryptionFailed --&gt; [*]
+
+    Verifying --&gt; VerificationFailed : invalid
+    Verifying --&gt; Completed : valid
+
+    VerificationFailed --&gt; [*]
+    Completed --&gt; [*]</code></pre>
+<hr />
+<h2 id="api-design">API Design<a class="headerlink" href="#api-design" title="Permanent link">&para;</a></h2>
+<h3 id="rest-api-endpoints">REST API Endpoints<a class="headerlink" href="#rest-api-endpoints" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph LR
+    subgraph "Embed Endpoints"
+        E1[POST /api/v1/embed]
+        E2[POST /api/v1/embed/distributed]
+        E3[POST /api/v1/embed/batch]
+        E4[POST /api/v1/embed/matrix]
+        E5[POST /api/v1/embed/archive]
+    end
+
+    subgraph "Extract Endpoints"
+        X1[GET /api/v1/extract/id]
+        X2[POST /api/v1/extract/distributed]
+        X3[POST /api/v1/extract/batch]
+        X4[POST /api/v1/extract/archive]
+    end
+
+    subgraph "Analysis Endpoints"
+        A1[POST /api/v1/analyze/capacity]
+        A2[POST /api/v1/validate]
+    end
+
+    subgraph "Utility Endpoints"
+        U1[POST /api/v1/keygen]
+        U2[GET /api/v1/formats]
+        U3[GET /api/v1/health]
+    end
+
+    subgraph "Archive Endpoints"
+        AR1[POST /api/v1/archive/create]
+        AR2[POST /api/v1/archive/extract]
+        AR3[POST /api/v1/archive/list]
+    end</code></pre>
+<h3 id="api-reference-table">API Reference Table<a class="headerlink" href="#api-reference-table" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Endpoint</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/embed</code></td>
+<td>Embed payload in single carrier</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/embed/distributed</code></td>
+<td>Distribute across multiple carriers</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/embed/batch</code></td>
+<td>Process multiple embeds</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/embed/matrix</code></td>
+<td>N:M distribution pattern</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/embed/archive</code></td>
+<td>Process archive of carriers</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/extract/{id}</code></td>
+<td>Extract from single carrier</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/extract/distributed</code></td>
+<td>Reconstruct from multiple carriers</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/extract/batch</code></td>
+<td>Process multiple extractions</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/extract/archive</code></td>
+<td>Extract from archive</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/analyze/capacity</code></td>
+<td>Calculate embedding capacity</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/validate</code></td>
+<td>Validate stego media integrity</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/archive/create</code></td>
+<td>Create archive of stego media</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/archive/extract</code></td>
+<td>Extract archive contents</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/archive/list</code></td>
+<td>List archive contents</td>
+</tr>
+<tr>
+<td><code>POST</code></td>
+<td><code>/api/v1/keygen</code></td>
+<td>Generate key pair</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/formats</code></td>
+<td>List supported formats</td>
+</tr>
+<tr>
+<td><code>GET</code></td>
+<td><code>/api/v1/health</code></td>
+<td>Health check</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="development-workflow">Development Workflow<a class="headerlink" href="#development-workflow" title="Permanent link">&para;</a></h2>
+<h3 id="adding-a-new-command">Adding a New Command<a class="headerlink" href="#adding-a-new-command" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart TD
+    Start([New Feature Request]) --&gt; DefineCmd[Define Command Structure]
+    DefineCmd --&gt; CreateHandler[Create Command Handler]
+    CreateHandler --&gt; ImplService[Implement Domain Service Logic]
+    ImplService --&gt; AddEvents[Emit Domain Events]
+    AddEvents --&gt; UnitTests[Write Unit Tests]
+    UnitTests --&gt; IntegTests[Write Integration Tests]
+    IntegTests --&gt; CLI[Add CLI Interface]
+    CLI --&gt; API[Add API Endpoint]
+    API --&gt; Docs[Update Documentation]
+    Docs --&gt; End([Complete])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style UnitTests fill:#fff3cd
+    style IntegTests fill:#fff3cd</code></pre>
+<h3 id="adding-a-new-bounded-context">Adding a New Bounded Context<a class="headerlink" href="#adding-a-new-bounded-context" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>flowchart TD
+    Start([New Context Needed]) --&gt; DefineAgg[Define Aggregates &amp; Entities]
+    DefineAgg --&gt; DefineVO[Define Value Objects]
+    DefineVO --&gt; DefineEvents[Define Domain Events]
+    DefineEvents --&gt; ImplRepo[Implement Repository]
+    ImplRepo --&gt; ImplService[Implement Domain Service]
+    ImplService --&gt; AddHandlers[Add Command/Query Handlers]
+    AddHandlers --&gt; IntegExisting[Integrate with Existing Contexts]
+    IntegExisting --&gt; Tests[Write Comprehensive Tests]
+    Tests --&gt; Docs[Update Architecture Docs]
+    Docs --&gt; End([Complete])
+
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style Tests fill:#fff3cd</code></pre>
+<h3 id="testing-strategy">Testing Strategy<a class="headerlink" href="#testing-strategy" title="Permanent link">&para;</a></h3>
+<pre class="mermaid"><code>graph TB
+    subgraph "Unit Tests"
+        UT1[Domain Logic Tests]
+        UT2[Value Object Tests]
+        UT3[Aggregate Tests]
+        UT4[Service Tests]
+    end
+
+    subgraph "Integration Tests"
+        IT1[Command Handler Tests]
+        IT2[Query Handler Tests]
+        IT3[Repository Tests]
+        IT4[External Service Tests]
+    end
+
+    subgraph "E2E Tests"
+        E2E1[CLI Workflow Tests]
+        E2E2[API Workflow Tests]
+        E2E3[Distribution Pattern Tests]
+        E2E4[Error Recovery Tests]
+    end
+
+    subgraph "Security Tests"
+        ST1[Cryptography Tests]
+        ST2[Vulnerability Scans]
+        ST3[Penetration Tests]
+        ST4[Statistical Analysis Tests]
+    end
+
+    UT1 --&gt; IT1
+    UT2 --&gt; IT1
+    UT3 --&gt; IT2
+    UT4 --&gt; IT2
+
+    IT1 --&gt; E2E1
+    IT2 --&gt; E2E2
+    IT3 --&gt; E2E3
+    IT4 --&gt; E2E4
+
+    E2E1 --&gt; ST1
+    E2E2 --&gt; ST2
+    E2E3 --&gt; ST3
+    E2E4 --&gt; ST4</code></pre>
+<hr />
+<h2 id="conclusion">Conclusion<a class="headerlink" href="#conclusion" title="Permanent link">&para;</a></h2>
+<p>This architecture provides:</p>
+<ul>
+<li><strong>Security First</strong>: Post-quantum cryptography with multiple layers of protection</li>
+<li><strong>Flexibility</strong>: Four distribution patterns for different use cases</li>
+<li><strong>Resilience</strong>: Reed-Solomon error correction for data recovery</li>
+<li><strong>Maintainability</strong>: Clean Architecture with DDD and CQRS patterns</li>
+<li><strong>Extensibility</strong>: Plugin-style technique implementations</li>
+<li><strong>Testability</strong>: Comprehensive testing strategy at all levels</li>
+<li><strong>Documentation</strong>: Living architecture documentation with visual diagrams</li>
+</ul>
+<p><strong>Key Benefits:</strong></p>
+<ol>
+<li><strong>Separation of Concerns</strong>: Each bounded context handles its own domain logic</li>
+<li><strong>Independent Scaling</strong>: Commands and queries can scale independently</li>
+<li><strong>Event-Driven</strong>: Asynchronous processing and audit trails via domain events</li>
+<li><strong>Future-Proof</strong>: Quantum-resistant algorithms protect against future threats</li>
+<li><strong>Polyglot Persistence</strong>: Each context can use optimal storage strategy</li>
+<li><strong>Developer Experience</strong>: Clear patterns and comprehensive documentation</li>
+</ol>
+<hr />
+<h2 id="glossary">Glossary<a class="headerlink" href="#glossary" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Aggregate</strong></td>
+<td>DDD pattern: cluster of domain objects treated as a single unit</td>
+</tr>
+<tr>
+<td><strong>Bounded Context</strong></td>
+<td>DDD pattern: explicit boundary within which a domain model is valid</td>
+</tr>
+<tr>
+<td><strong>Chi-Square Test</strong></td>
+<td>Statistical test to detect non-uniform data distribution</td>
+</tr>
+<tr>
+<td><strong>CQRS</strong></td>
+<td>Command Query Responsibility Segregation pattern</td>
+</tr>
+<tr>
+<td><strong>DCT</strong></td>
+<td>Discrete Cosine Transform (used in JPEG steganography)</td>
+</tr>
+<tr>
+<td><strong>Dilithium</strong></td>
+<td>Post-quantum digital signature algorithm (NIST standard)</td>
+</tr>
+<tr>
+<td><strong>Domain Event</strong></td>
+<td>Something that happened in the domain that domain experts care about</td>
+</tr>
+<tr>
+<td><strong>KEM</strong></td>
+<td>Key Encapsulation Mechanism (cryptographic primitive)</td>
+</tr>
+<tr>
+<td><strong>Kyber</strong></td>
+<td>Post-quantum key encapsulation algorithm (NIST standard)</td>
+</tr>
+<tr>
+<td><strong>LSB</strong></td>
+<td>Least Significant Bit (basic steganography technique)</td>
+</tr>
+<tr>
+<td><strong>PQC</strong></td>
+<td>Post-Quantum Cryptography</td>
+</tr>
+<tr>
+<td><strong>Reed-Solomon</strong></td>
+<td>Error correction coding algorithm</td>
+</tr>
+<tr>
+<td><strong>RS Analysis</strong></td>
+<td>Regular-Singular analysis for steganography detection</td>
+</tr>
+<tr>
+<td><strong>Shard</strong></td>
+<td>A piece of data split using Reed-Solomon encoding</td>
+</tr>
+<tr>
+<td><strong>Steganography</strong></td>
+<td>Practice of concealing data within other non-secret data</td>
+</tr>
+<tr>
+<td><strong>Value Object</strong></td>
+<td>DDD pattern: immutable object that describes domain characteristics</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><em>Last Updated: December 2025</em></p>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+  <form class="md-feedback" name="feedback" hidden>
+    <fieldset>
+      <legend class="md-feedback__title">
+        Was this page helpful?
+      </legend>
+      <div class="md-feedback__inner">
+        <div class="md-feedback__list">
+          
+            <button class="md-feedback__icon md-icon" type="submit" title="This page was helpful" data-md-value="1">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8m2 0a10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2a10 10 0 0 1 10 10M10 9.5c0 .8-.7 1.5-1.5 1.5S7 10.3 7 9.5 7.7 8 8.5 8s1.5.7 1.5 1.5m7 0c0 .8-.7 1.5-1.5 1.5S14 10.3 14 9.5 14.7 8 15.5 8s1.5.7 1.5 1.5m-5 7.73c-1.75 0-3.29-.73-4.19-1.81L9.23 14c.45.72 1.52 1.23 2.77 1.23s2.32-.51 2.77-1.23l1.42 1.42c-.9 1.08-2.44 1.81-4.19 1.81"/></svg>
+            </button>
+          
+            <button class="md-feedback__icon md-icon" type="submit" title="This page could be improved" data-md-value="0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 12a8 8 0 0 0-8-8 8 8 0 0 0-8 8 8 8 0 0 0 8 8 8 8 0 0 0 8-8m2 0a10 10 0 0 1-10 10A10 10 0 0 1 2 12 10 10 0 0 1 12 2a10 10 0 0 1 10 10m-6.5-4c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5M10 9.5c0 .8-.7 1.5-1.5 1.5S7 10.3 7 9.5 7.7 8 8.5 8s1.5.7 1.5 1.5m2 4.5c1.75 0 3.29.72 4.19 1.81l-1.42 1.42C14.32 16.5 13.25 16 12 16s-2.32.5-2.77 1.23l-1.42-1.42C8.71 14.72 10.25 14 12 14"/></svg>
+            </button>
+          
+        </div>
+        <div class="md-feedback__note">
+          
+            <div data-md-value="1" hidden>
+              
+              
+                
+              
+              
+              
+                
+                
+              
+              Thanks for your feedback!
+            </div>
+          
+            <div data-md-value="0" hidden>
+              
+              
+                
+              
+              
+              
+                
+                
+              
+              Thanks for your feedback! Help us improve by opening an issue.
+            </div>
+          
+        </div>
+      </div>
+    </fieldset>
+  </form>
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href="../troubleshooting/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Troubleshooting">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Troubleshooting
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../faq/" class="md-footer__link md-footer__link--next" aria-label="Next: FAQ">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                FAQ
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 Shadowforge Development Team
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+        
+<div class="md-social">
+  
+    
+    
+    
+    
+    <a href="https://github.com/greysquirr3l/shadowforge" target="_blank" rel="noopener" title="Shadowforge on GitHub" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M173.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6m-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3m44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9M252.8 8C114.1 8 8 113.3 8 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C436.2 457.8 504 362.9 504 252 504 113.3 391.5 8 252.8 8M105.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1m-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7m32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1m-11.4-14.7c-1.6 1-1.6 3.6 0 5.9s4.3 3.3 5.6 2.3c1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2"/></svg>
+    </a>
+  
+    
+    
+    
+    
+    <a href="https://github.com/greysquirr3l/shadowforge/issues" target="_blank" rel="noopener" title="Report a bug" class="md-social__link">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M192 96c0-53 43-96 96-96s96 43 96 96v3.6c0 15.7-12.7 28.4-28.4 28.4H220.5c-15.7 0-28.4-12.7-28.4-28.4V96zm345.6 12.8c10.6 14.1 7.7 34.2-6.4 44.8l-97.8 73.3c5.3 8.9 9.3 18.7 11.8 29.1H544c17.7 0 32 14.3 32 32s-14.3 32-32 32h-96v32c0 2.6-.1 5.3-.2 7.9l83.4 62.5c14.1 10.6 17 30.7 6.4 44.8s-30.7 17-44.8 6.4l-63.1-47.3c-23.2 44.2-66.5 76.2-117.7 83.9V280c0-13.3-10.7-24-24-24s-24 10.7-24 24v230.2c-51.2-7.7-94.5-39.7-117.7-83.9l-63.1 47.3c-14.1 10.6-34.2 7.7-44.8-6.4s-7.7-34.2 6.4-44.8l83.4-62.5c-.1-2.6-.2-5.2-.2-7.9v-32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32h98.8c2.5-10.4 6.5-20.2 11.8-29.1l-97.8-73.3c-14.1-10.6-17-30.7-6.4-44.8s30.7-17 44.8-6.4L192 184c12.3-5.1 25.8-8 40-8h112c14.2 0 27.7 2.8 40 8l108.8-81.6c14.1-10.6 34.2-7.7 44.8 6.4"/></svg>
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.instant", "navigation.tracking", "navigation.tabs", "navigation.tabs.sticky", "navigation.sections", "navigation.expand", "navigation.path", "navigation.top", "navigation.footer", "toc.follow", "toc.integrate", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
